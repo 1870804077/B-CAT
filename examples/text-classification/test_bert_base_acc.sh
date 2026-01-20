@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #!/bin/bash
 
 # =======================================================
@@ -14,7 +13,8 @@ export PYTHONPATH=$PYTHONPATH:.:$SHAFT_LIB_PATH
 
 TASK="sst2"
 BATCH_SIZE_TRAIN=32
-BATCH_SIZE_INFER=1
+# 将推理 Batch Size 设为 1 以避免 MPC 显存溢出 (OOM)
+BATCH_SIZE_INFER=1 
 OUTPUT_ROOT="./checkpoints"
 
 # 本地模型目录
@@ -29,20 +29,20 @@ echo "   Mirror: $HF_ENDPOINT"
 echo "======================================================="
 
 # =======================================================
-# 2. 智能轻量化下载 (只下 400MB，不下载 4GB)
+# 2. 智能轻量化下载 (升级版：检查具体文件)
 # =======================================================
 echo -e "\n🛠️  Checking Base Model..."
 
-if [ ! -d "$LOCAL_MODEL_DIR" ]; then
-    echo "   Local model not found. Downloading PyTorch weights ONLY..."
+# 检查关键文件是否存在，而不仅仅是文件夹
+if [ ! -f "$LOCAL_MODEL_DIR/vocab.txt" ] || [ ! -f "$LOCAL_MODEL_DIR/pytorch_model.bin" ]; then
+    echo "   ⚠️  Model files missing or incomplete. Downloading PyTorch weights..."
     
     if ! command -v huggingface-cli &> /dev/null; then
-        echo "⚠️  huggingface-cli not found. Installing..."
+        echo "   Installing huggingface-cli..."
         pip install -U "huggingface_hub[cli]"
     fi
 
-    # 【核心修改】使用 --include 只下载必要文件
-    # 排除 Flax, TensorFlow, Rust 等无用大文件
+    # 只下载必要文件 (约 400MB)
     huggingface-cli download google-bert/bert-base-uncased \
         --local-dir "$LOCAL_MODEL_DIR" \
         --local-dir-use-symlinks False \
@@ -53,8 +53,9 @@ if [ ! -d "$LOCAL_MODEL_DIR" ]; then
         echo "❌ Download failed. Please check network."
         exit 1
     fi
+    echo "✅ Download finished."
 else
-    echo "✅ Base model found at: $LOCAL_MODEL_DIR"
+    echo "✅ Base model verified at: $LOCAL_MODEL_DIR"
 fi
 
 # =======================================================
@@ -62,7 +63,6 @@ fi
 # =======================================================
 echo -e "\n[Step 1/3] Starting Plaintext Fine-tuning..."
 
-# 传入本地精简版模型路径
 python model_modify.py \
     --model_name_or_path "$LOCAL_MODEL_DIR" \
     --task $TASK \
@@ -106,14 +106,3 @@ python run_glue_private.py \
 echo "======================================================="
 echo "✅ All Done! Results saved in $APPROX_MODEL_DIR"
 echo "======================================================="
-=======
-export TASK_NAME=sst2
-
-python run_glue_private.py \
-  --model_name_or_path andeskyl/bert-base-cased-$TASK_NAME \
-  --task_name $TASK_NAME \
-  --max_length 128 \
-  --acc \
-  --per_device_eval_batch_size 1 \
-  --output_dir eval_private/$TASK_NAME/
->>>>>>> main
