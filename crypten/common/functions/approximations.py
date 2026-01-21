@@ -2209,7 +2209,7 @@ def silu(self, k1=None, k2=None,L=4.0):
 
 
         return res
-        elif method == "newer_debug":
+    elif method == "newer_debug":
         coeff_x3 = 0.044715
         sqrt_2_pi = math.sqrt(2 / math.pi)
         threshold = 4.0

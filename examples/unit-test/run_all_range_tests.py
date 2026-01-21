@@ -276,16 +276,16 @@ if __name__ == "__main__":
     print(f"[Config] Current Precision Bits: {crypten.config.cfg.encoder.precision_bits}")
     
     # 根据需要取消注释
-    # test_sigmoid_range()
-    # test_tanh_range()
+    test_sigmoid_range()
+    test_tanh_range()
 
-    # test_inv_sqrt_range()
-    # test_reciprocal_range()
+    test_inv_sqrt_range()
+    test_reciprocal_range()
 
     test_gelu_range()
-    # test_silu_range()
+    test_silu_range()
     
-    # test_exp_range()
+    test_exp_range()
     # test_softmax_range()
     
     print("\n" + "="*60)

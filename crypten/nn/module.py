@@ -1338,6 +1338,18 @@ class Cos(Module):
     @staticmethod
     def from_onnx(attributes=None):
         return Cos()
+    
+class Not(Module):
+    """
+    Module that calculates the logical negation of the given input tensor.
+    Usually corresponds to ONNX 'Not' operator.
+    """
+    def forward(self, input):
+        return input.logical_not()
+
+    @staticmethod
+    def from_onnx(attributes=None):
+        return Not()
 
 class Erf(Module):
     """
