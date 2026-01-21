@@ -1317,6 +1317,27 @@ class Exp(Module):
     def from_onnx(attributes=None):
         return Exp()
 
+class Sin(Module):
+    """
+    Module that calculates the sine of the given input tensor, element-wise.
+    """
+    def forward(self, input):
+        return input.sin()
+
+    @staticmethod
+    def from_onnx(attributes=None):
+        return Sin()
+
+class Cos(Module):
+    """
+    Module that calculates the cosine of the given input tensor, element-wise.
+    """
+    def forward(self, input):
+        return input.cos()
+
+    @staticmethod
+    def from_onnx(attributes=None):
+        return Cos()
 
 class Erf(Module):
     """

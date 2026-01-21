@@ -17,10 +17,6 @@
 # limitations under the License.
 """Testing a Transformers model in priavte for sequence classification on GLUE."""
 
-# coding=utf-8
-# Modified by SHAFT's team & Adapted for Custom Operators & RTX 3090
-"""Testing a Transformers model in private for sequence classification on GLUE."""
-
 import argparse
 import json
 import logging
@@ -56,6 +52,15 @@ try:
 except ImportError:
     MultiProcessLauncher = None
 
+# 引入近似算子库 (关键修复)
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+try:
+    from approximation_plain import replace_bert_modules
+    print("✅ Successfully imported 'replace_bert_modules' for Private Inference")
+except ImportError:
+    print("❌ Critical Error: 'approximation_plain.py' not found. Model structure will mismatch!")
+    sys.exit(1)
+
 torch.backends.cuda.matmul.allow_tf32 = False
 torch.backends.cudnn.allow_tf32 = False
 
@@ -86,7 +91,7 @@ def parse_args():
     parser.add_argument("--pad_to_max_length", action="store_true")
     parser.add_argument("--model_name_or_path", type=str, required=True)
     parser.add_argument("--use_slow_tokenizer", action="store_true")
-    parser.add_argument("--per_device_eval_batch_size", type=int, default=8, help="Batch size (keep small for MPC)")
+    parser.add_argument("--per_device_eval_batch_size", type=int, default=1, help="Batch size (keep small for MPC)")
     parser.add_argument("--output_dir", type=str, default=None)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--trust_remote_code", type=bool, default=False)
@@ -134,7 +139,7 @@ def main():
         finetuning_task=args.task_name,
         trust_remote_code=args.trust_remote_code,
     )
-    # 尝试加载 tokenizer，如果 checkpoint 里没有则用默认
+    
     try:
         tokenizer = AutoTokenizer.from_pretrained(
             args.model_name_or_path, use_fast=not args.use_slow_tokenizer
@@ -143,20 +148,27 @@ def main():
         print("⚠️  Tokenizer not found in path, using bert-base-uncased")
         tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased", use_fast=not args.use_slow_tokenizer)
 
-    # 3. 模型加载逻辑
+    # 3. Load Model with APPROXIMATION
     print(f"🔥 SHAFT Mode: Loading weights from {args.model_name_or_path} ...")
     
-    model = AutoModelForSequenceClassification.from_config(config)
+    # 这里必须使用 BertForSequenceClassification 确保结构一致
+    model = BertForSequenceClassification(config)
+
+    # 【关键步骤】在加载权重前，必须先替换成近似算子！
+    print("   Applying replace_bert_modules (Poly Approx) to structure...")
+    model.bert = replace_bert_modules(model.bert)
 
     checkpoint_file = os.path.join(args.model_name_or_path, "pytorch_model.bin")
     if os.path.exists(checkpoint_file):
         print(f"   Found checkpoint: {checkpoint_file}")
         state_dict = torch.load(checkpoint_file, map_location="cpu")
+        # 现在结构匹配了，加载应该不会有 Unexpected keys
         missing, unexpected = model.load_state_dict(state_dict, strict=False)
-        print(f"   ✅ Weights loaded. Missing: {len(missing)}, Unexpected (Approx Params): {len(unexpected)}")
+        print(f"   ✅ Weights loaded. Missing: {len(missing)}, Unexpected: {len(unexpected)}")
+        if len(unexpected) > 0:
+            print(f"   ⚠️  Warning: Still have unexpected keys: {unexpected[:5]}...")
     else:
         print("   ⚠️ Checkpoint not found! Using random init (Validation will be poor).")
-        model = AutoModelForSequenceClassification.from_pretrained(args.model_name_or_path, config=config)
 
     # 4. Preprocess Data
     if args.task_name is not None:
@@ -167,43 +179,54 @@ def main():
     padding = "max_length"
     
     def preprocess_function(examples):
-        # 【核心修复】：变量名改为 inputs，避免覆盖全局 args
         inputs = (
             (examples[sentence1_key],) if sentence2_key is None 
             else (examples[sentence1_key], examples[sentence2_key])
         )
-        # 使用全局 args.max_length
         result = tokenizer(*inputs, padding=padding, max_length=args.max_length, truncation=True)
+        
+        if "label" in examples:
+            result["labels"] = examples["label"]
+            
         return result
+
+    column_names = raw_datasets[validation_key].column_names
+    keep_columns = ["input_ids", "attention_mask", "token_type_ids", "labels"]
+    remove_columns = [col for col in column_names if col not in keep_columns]
 
     processed_datasets = raw_datasets.map(
         preprocess_function,
         batched=True,
-        remove_columns=raw_datasets["train"].column_names, # 确保移除文本列
+        remove_columns=remove_columns, 
         desc="Running tokenizer on dataset",
     )
 
     eval_dataset = processed_datasets[validation_key]
+    eval_dataset.set_format(type="torch", columns=keep_columns)
+
     data_collator = default_data_collator
     eval_dataloader = DataLoader(eval_dataset, collate_fn=data_collator, batch_size=args.per_device_eval_batch_size)
     metric = evaluate.load("glue", args.task_name) if args.task_name else evaluate.load("accuracy")
 
-    # 5. Crypten 加密
+    # 5. Crypten Encrypt & Trace
     device = "cuda" if torch.cuda.is_available() else "cpu"
     ct.init()
     
-    print("🔒 Encrypting model...")
+    print("🔒 Encrypting model (Tracing computation graph)...")
+    # 构造 Dummy Input 供 Trace 使用
     dummy_input_ids = torch.zeros(1, args.max_length, dtype=torch.long)
     dummy_mask = torch.ones(1, args.max_length, dtype=torch.long)
     dummy_token_type = torch.zeros(1, args.max_length, dtype=torch.long)
     
+    # CrypTen 会自动追踪 approximation_plain.py 里定义的 torch 操作
+    # 从而将多项式算子转换为 MPC 协议图
     private_model = ct.nn.from_pytorch(model, (dummy_input_ids, dummy_mask, dummy_token_type)).encrypt().to(device)
     print("✅ Model encrypted!")
     
     del model
     torch.cuda.empty_cache()
 
-    # 6. 推理循环
+    # 6. Inference Loop
     print("🚀 Starting Private Inference Loop...")
     samples_seen = 0
     
@@ -220,6 +243,11 @@ def main():
             outputs = outputs_enc.get_plain_text().cpu()
 
         predictions = outputs.argmax(dim=-1) if not is_regression else outputs.squeeze()
+        
+        if "labels" not in batch:
+            print("⚠️ Warning: 'labels' missing in batch, skipping metrics.")
+            continue
+            
         references = batch["labels"]
 
         metric.add_batch(predictions=predictions, references=references)
