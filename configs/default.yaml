@@ -5,7 +5,7 @@ debug:
   debug_mode: False
   validation_mode: False
 encoder:
-  precision_bits: 16
+  precision_bits: 20
 cost:
   estimate_cost: True
   estimate_mode: "comm"
@@ -29,7 +29,7 @@ functions:
   sqrt_nr_initial: null
 
   # sigmoid / tanh configuration
-  sigmoid_tanh_method: "newer_debug"
+  sigmoid_tanh_method: "newer_time"
   sigmoid_tanh_terms: 32
   sigmoid_fs_m: 5
   sigmoid_fs_terms: 5
@@ -53,18 +53,18 @@ functions:
   trig_iterations: 10
 
   # error function configuration
-  erf_method: "fourier"
+  erf_method: "newer_time"
   erf_iterations: 8
   erf_fs_period: 16
   erf_fs_terms: 5
   
   # gelu function configuration
-  gelu_method: "newer_debug"
+  gelu_method: "newer_time"
   gelu_fs_period: 8
   gelu_fs_terms: 8
 
   # silu function configuration
-  silu_method: "newer_debug"
+  silu_method: "newer_time"
   silu_fs_period: 16
   silu_fs_terms: 12
 mpc:

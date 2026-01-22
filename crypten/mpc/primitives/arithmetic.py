@@ -277,7 +277,7 @@ class ArithmeticSharedTensor(object):
             [tensor.share for tensor in tensors], *args, **kwargs
         )
         return result
-
+    
     @staticmethod
     def reveal_batch(tensor_or_list, dst=None):
         """Get (batched) plaintext without any downscaling"""

@@ -86,12 +86,12 @@ def test_tanh_range():
 # ==========================================
 def test_gelu_range():
     print_header("GeLU", "K1=1, K2=[4, 12], Internal Tanh L=4.0")
-    cfg.functions.gelu_method = "newer_time"
-    x = (torch.rand(1, 128, 768) * 10) - 5
+    cfg.functions.gelu_method = "newer_debug"
+    x = (torch.rand(1, 128, 768) * 14) - 7
     y_true = torch.nn.functional.gelu(x)
     x_enc = crypten.cryptensor(x)
     for k1 in (1,3):
-        for k2 in range(12, 13):
+        for k2 in range(4, 13):
             start = time.time()
             y_enc = x_enc.gelu(k1=k1, k2=k2) 
             t = time.time() - start
@@ -164,11 +164,11 @@ def test_silu_range():
     x = (torch.rand(1, 128, 768) * 30) - 15
     y_true = torch.nn.functional.silu(x)
     x_enc = crypten.cryptensor(x)
-    cfg.functions.silu_method = "newer_debug"
+    cfg.functions.silu_method = "newer_time"
     k1_val = 1
-    for k2_val in range(4, 13):
+    for k2_val in range(12, 13):
         start = time.time()
-        y_enc = x_enc.silu(k1=k1_val, k2=k2_val, L=10.0)
+        y_enc = x_enc.silu(k1=k1_val, k2=k2_val, L=12.0)
         t = time.time() - start
         
         y_pred = y_enc.get_plain_text()
@@ -276,16 +276,16 @@ if __name__ == "__main__":
     print(f"[Config] Current Precision Bits: {crypten.config.cfg.encoder.precision_bits}")
     
     # 根据需要取消注释
-    test_sigmoid_range()
-    test_tanh_range()
+    # test_sigmoid_range()
+    # test_tanh_range()
 
-    test_inv_sqrt_range()
-    test_reciprocal_range()
+    # test_inv_sqrt_range()
+    # test_reciprocal_range()
 
-    test_gelu_range()
+    # test_gelu_range()
     test_silu_range()
     
-    test_exp_range()
+    # test_exp_range()
     # test_softmax_range()
     
     print("\n" + "="*60)

@@ -1817,7 +1817,7 @@ def _diff_gelu_tanh(x):
 def _diff_silu(x):
     return torch.sign(x) * (torch.nn.functional.silu(x) - torch.nn.functional.relu(x))
 
-def gelu(self, approximate="none", k1=None, k2=None):
+def gelu(self, approximate="none", k1=1, k2=12):
     r"""Compute the Gaussian error linear unit of a tensor"""
     # if k1 is not None or k2 is not None:
     #     method = "newer_debug"
@@ -1919,7 +1919,6 @@ def gelu(self, approximate="none", k1=None, k2=None):
 
         a_all, b_all, r_all, c_all = provider.generate_cmp_aux(double_size, device=device)
         u_cmp, v_cmp, w_cmp = provider.generate_additive_triple(double_size, double_size,"mul",device=device)
-        
         t_erf, u_erf, v_erf, t2_erf, t3_erf = provider.generate_hybrid_triple(
             self.size(), period, len(beta_sin_coeffs), device=device
         )
@@ -2179,7 +2178,7 @@ def gelu(self, approximate="none", k1=None, k2=None):
     else:
         raise ValueError(f"Unrecognized method {method} for gelu")
 
-def silu(self, k1=None, k2=None,L=12.0):
+def silu(self, k1=1, k2=12,L=12.0):
     r"""Compute the Sigmoid linear unit of a tensor with global variable support"""
     # 自动判定 method
     # if k1 is not None or k2 is not None:
@@ -2374,59 +2373,70 @@ def silu(self, k1=None, k2=None,L=12.0):
 
         double_size = (2,) + self.size()
         # # ================== 🛠️ 调试代码开始 ==================
-        # print("\n" + "="*40)
-        # print("🕵️  Variable Type & Content Inspection:")
+        # # print("\n" + "="*40)
+        # # print("🕵️  Variable Type & Content Inspection:")
 
         # # 定义一个辅助函数来安全地获取类型和明文
-        # def inspect_var(name, var):
-        #     # 1. 获取类型
-        #     v_type = type(var)
+        def inspect_var(name, var):
+            # 1. 获取类型
+            v_type = type(var)
             
-        #     # 2. 获取明文 (处理 MPCTensor 和 ArithmeticSharedTensor 的差异)
-        #     if hasattr(var, 'get_plain_text'):
-        #         # MPCTensor 或 ArithmeticSharedTensor
-        #         with crypten.no_grad():
-        #             v_plain = var.get_plain_text()
-        #     elif hasattr(var, 'share'):
-        #         # 某些情况下 var 可能是 MPCTensor 但你想看它的 share
-        #         with crypten.no_grad():
-        #             v_plain = var.share.get_plain_text()
-        #     else:
-        #         # 普通 Tensor
-        #         v_plain = var
+            # 2. 获取明文 (处理 MPCTensor 和 ArithmeticSharedTensor 的差异)
+            if hasattr(var, 'get_plain_text'):
+                # MPCTensor 或 ArithmeticSharedTensor
+                with crypten.no_grad():
+                    v_plain = var.get_plain_text()
+            elif hasattr(var, 'share') and hasattr(var.share, 'get_plain_text'):
+                # 某些封装情况
+                with crypten.no_grad():
+                    v_plain = var.share.get_plain_text()
+            else:
+                # 普通 Tensor
+                v_plain = var
             
-        #     # 仅在 Rank 0 打印，避免多进程输出混乱
-        #     import crypten.communicator as comm
-        #     if comm.get().get_rank() == 0:
-        #         print(f"👉 [{name}]")
-        #         print(f"    Type:      {v_type}")
-        #         # 打印前 3 个元素预览，防止刷屏
-        #         flat_data = v_plain.view(-1).tolist()
-        #         preview = flat_data[:5] 
-        #         print(f"    Plain[:5]: {preview} ... (Total {len(flat_data)})")
-        #         print("-" * 20)
+            # 获取当前 rank
+            import crypten.communicator as comm
+            current_rank = comm.get().get_rank()
+            if current_rank != 0:
+                return
+            # 打印当前 rank 的信息（所有 rank 都打印，便于调试）
+            print(f"[Rank {current_rank}] 👉 [{name}]")
+            print(f"[Rank {current_rank}]     Type:      {v_type}")
+            
+            # 安全地展平并预览数据
+            try:
+                if isinstance(v_plain, torch.Tensor):
+                    flat_data = v_plain.detach().cpu().view(-1).tolist()
+                else:
+                    flat_data = [float(v_plain)]  # 标量
+                preview = flat_data[:5]
+                total = len(flat_data)
+                print(f"[Rank {current_rank}]     Plain[:5]: {preview} ... (Total {total})")
+            except Exception as e:
+                print(f"[Rank {current_rank}]     Plain: <failed to extract: {e}>")
+            
+            print(f"[Rank {current_rank}] " + "-" * 20)
 
         a_all, b_all, r_all, c_all = provider.generate_cmp_aux(double_size, device=device)
+        inspect_var("z_share ",z_share )
+        inspect_var("a_all ",a_all )
         u_cmp, v_cmp, w_cmp = provider.generate_additive_triple(double_size, double_size,"mul",device=device)
-        
         t_sigmoid, u_sigmoid, v_sigmoid, t2_sigmoid, t3_sigmoid = provider.generate_hybrid_triple(
             self.size(), period, len(beta_sin_coeffs), device=device
         )
         u_silu, v_silu, w_silu = provider.generate_additive_triple(self.size(),self.size(),"mul", device=device)
-        
         inputs_cmp = crypten.stack([z_share - threshold, z_share.neg() - threshold])
-        
-        eps_cmp_share = inputs_cmp.share - u_cmp
-        delta_cmp_share =a_all.share - v_cmp
-        
+        inspect_var("inputs_cmp ",inputs_cmp )
+        eps_cmp_share = inputs_cmp._tensor - u_cmp
+        delta_cmp_share =a_all - v_cmp     
         delta_sigmoid_share = (z_share + t_sigmoid + period)._tensor
         # ================== 🛠️ 调试代码结束 ==================
-        comm_block_1 = type(eps_cmp_share).cat([
+        comm_block_1 = type(delta_sigmoid_share).cat([
             eps_cmp_share,                 # (2, Size)
             delta_cmp_share,               # (2, Size)
             delta_sigmoid_share.unsqueeze(0) # (1, Size)
         ], dim=0)
-        
+
         with crypten.no_grad():
             plain_block_1 = comm_block_1.get_plain_text()
             
@@ -2436,8 +2446,7 @@ def silu(self, k1=None, k2=None,L=12.0):
         delta_sigmoid_plain_1 = plain_block_1[4] # Sigmoid 的 delta
         scale_2_20 = 1048576.0 
         
-        delta_real = delta_sigmoid_plain_1.float() / scale_2_20
-
+        delta_real = delta_sigmoid_plain_1.float()
         delta_mod = delta_real
         delta_raw = delta_mod - period
         k_list = [i * 2 * math.pi / period for i in range(1, len(beta_sin_coeffs) + 1)]
@@ -2463,17 +2472,17 @@ def silu(self, k1=None, k2=None,L=12.0):
             poly_res += z_cube * c3
             
         sigmoid_out = poly_res + fourier_res
-        
         # (B) 计算 CMP 的乘法结果 z = inputs * a_all
-        z_cmp = (w_cmp + v_cmp.mul(eps_cmp) + u_cmp.mul(delta_cmp) + eps_cmp * delta_cmp).div(1024*1024)
+        z_cmp = (w_cmp + v_cmp.mul(eps_cmp) + u_cmp.mul(delta_cmp) + eps_cmp * delta_cmp)
         # --- 4. 第二轮计算与通信 (Round 2) ---
-        
-        masked_share = (z_cmp + b_all.share)
+        masked_share = (z_cmp + b_all)
 
-        eps_silu_share = z_share.share - u_silu
-        delta_silu_share = sigmoid_out.share - v_silu
+        eps_silu_share = self._tensor - u_silu
+        delta_silu_share = sigmoid_out._tensor - v_silu
+        inspect_var("self._tensor ",self._tensor ) 
+        inspect_var("sigmoid_out ",sigmoid_out ) 
         # 打包发送
-        comm_block_2 = type(eps_cmp_share).cat([
+        comm_block_2 = type(delta_sigmoid_share).cat([
             masked_share,                   # (2, Size)
             eps_silu_share.unsqueeze(0),    # (1, Size)
             delta_silu_share.unsqueeze(0)   # (1, Size)
@@ -2488,26 +2497,137 @@ def silu(self, k1=None, k2=None,L=12.0):
         
         V = (masked_plain > 0).float()
         indicators = r_all.mul(V).add(c_all)
-        
         is_pos_large = indicators[0] # x > 12
         is_neg_large = indicators[1] # x < -12
         
-        silu_product_ast = (w_silu + v_silu.mul(eps_silu) + u_silu.mul(delta_silu) + eps_silu * delta_silu).div(1024*1024)
+        silu_product_ast = (w_silu + v_silu.mul(eps_silu) + u_silu.mul(delta_silu) + eps_silu * delta_silu)
+        inspect_var("silu_product_ast ",silu_product_ast ) 
         from crypten.mpc import MPCTensor
-        silu_product=(self+silu_product_ast-self).div(1024*1024)
+        silu_product=(self+silu_product_ast-self)
         # 3. 现在的 silu_product 就是一个标准的 MPCTensor 了
-        middle_mask = 1 - is_pos_large - is_neg_large
+        middle_mask = 1.0 - is_pos_large - is_neg_large
         lhs_batch = crypten.stack([self+silu_product-self,z_share], dim=0)
-        
         rhs_batch = crypten.stack([self+middle_mask-self,self+is_pos_large-self], dim=0)
-        
-        products_batch = lhs_batch.mul(rhs_batch)      
+        products_batch = lhs_batch.mul(rhs_batch) 
+   
         term_1 = products_batch[0]
         term_3 = products_batch[1]
         
         final_silu = term_1 + term_3
+        import crypten.communicator as comm
         
+        # ---------------------------------------------------------
+        # 🟢 第一步：全员集合！所有 Rank 必须共同参与解密 (防止死锁)
+        # ---------------------------------------------------------
+        with crypten.no_grad():
+            # 1. 辅助解密函数：不管是什么对象，统统变成 CPU 上的普通 Tensor
+            def safe_decrypt_to_cpu(var):
+                try:
+                    if hasattr(var, 'get_plain_text'):
+                        res = var.get_plain_text()
+                    elif hasattr(var, 'share') and hasattr(var.share, 'get_plain_text'):
+                        res = var.share.get_plain_text()
+                    else:
+                        res = var # 已经是 Tensor
+                    return res.cpu() # 统一转到 CPU，防止后面计算报错
+                except Exception:
+                    return None
+
+            # 2. 批量解密所有关键变量
+            # 输入输出
+            x_plain_cpu = safe_decrypt_to_cpu(z_share)
+            y_pred_cpu = safe_decrypt_to_cpu(final_silu)
+            
+            # 中间变量 (全部在这里解密，后面打印时直接用)
+            inputs_cmp_plain = safe_decrypt_to_cpu(inputs_cmp)
+            a_all_plain = safe_decrypt_to_cpu(a_all)
+            z_cmp_plain = safe_decrypt_to_cpu(z_cmp)
+            masked_plain_debug = safe_decrypt_to_cpu(masked_plain) # 复用之前解密的，或者重新解密 masked_share
+            indicators_plain = safe_decrypt_to_cpu(indicators)
+            sigmoid_out_plain = safe_decrypt_to_cpu(sigmoid_out)
+            silu_prod_plain = safe_decrypt_to_cpu(silu_product)
+            middle_mask_plain= safe_decrypt_to_cpu(middle_mask)
+            is_pos_large_plain= safe_decrypt_to_cpu(is_pos_large)
+            term_3_plain= safe_decrypt_to_cpu(term_3)
+            term_1_plain= safe_decrypt_to_cpu(term_1)
+            b_all_plain= safe_decrypt_to_cpu(b_all)
+            masked_share=safe_decrypt_to_cpu(masked_share)
+            V_share=safe_decrypt_to_cpu(V.float())
+        # ---------------------------------------------------------
+        # 🟢 第二步：只有 Rank 0 进行分析和打印
+        # ---------------------------------------------------------
+        if comm.get().get_rank() == 0:
+            print(f"\n{'='*20} 🔍 深度调试：寻找最大误差源头 {'='*20}", flush=True)
+            
+            # 1. 计算 Truth 和 Error
+            # 注意：x_plain_cpu 已经是普通 Tensor 了
+            y_true_cpu = torch.nn.functional.silu(x_plain_cpu)
+            error = (y_pred_cpu - y_true_cpu).abs()
+            
+            # 2. 找到误差最大的前 5 个点
+            top_k = 5
+            k_actual = min(top_k, error.numel())
+            top_values, top_indices = torch.topk(error.flatten(), k_actual)
+
+            # 3. 定义打印提取函数 (此时处理的都是普通 Tensor)
+            def extract_val(tensor, idx, is_pair=False):
+                if tensor is None: return "N/A"
+                try:
+                    if is_pair:
+                        # 处理 stack 过的 (2, N) 张量
+                        val_0 = tensor[0].flatten()[idx].item()
+                        val_1 = tensor[1].flatten()[idx].item()
+                        return f"[{val_0:.4f}, {val_1:.4f}]"
+                    else:
+                        # 处理普通 (N,) 张量
+                        return f"{tensor.flatten()[idx].item():.6f}"
+                except Exception as e:
+                    return f"Err: {e}"
+
+            # 4. 逐个审讯坏点
+            for rank_i, idx in enumerate(top_indices):
+                idx = idx.item()
+                print(f"\n🏆 [Top {rank_i+1} Error] Index: {idx}", flush=True)
+                print(f"   ❌ 当前误差      : {top_values[rank_i].item():.6f}", flush=True)
+                print(f"   📉 真实输入 x    : {extract_val(x_plain_cpu, idx)}", flush=True)
+                print(f"   ✅ 标准 SiLU(x)  : {y_true_cpu.flatten()[idx].item():.6f}", flush=True)
+                print(f"   🚫 你的计算结果  : {extract_val(y_pred_cpu, idx)}", flush=True)
+                print("-" * 40, flush=True)
+                
+                print("   --- 🔍 中间变量追踪 (已解密) ---", flush=True)
+                
+                # (1) inputs_cmp: 预期 [x-12, -x-12]
+                print(f"   inputs_cmp       : {extract_val(inputs_cmp_plain, idx, is_pair=True)}")
+                
+                # (2) a_all: 预期 随机正数
+                print(f"   a_all            : {extract_val(a_all_plain, idx, is_pair=True)}")
+                
+                # (3) z_cmp: 预期 符号应与 inputs_cmp 一致
+                print(f"   z_cmp            : {extract_val(z_cmp_plain, idx, is_pair=True)}")
+                
+                # (4) masked_plain: z_cmp + b_all
+                print(f"   masked_plain     : {extract_val(masked_plain_debug, idx, is_pair=True)}")
+                
+                # (5) indicators: 重要！必须接近 0.0 或 1.0
+                print(f"   indicators       : {extract_val(indicators_plain, idx, is_pair=True)}")
+                
+                # (6) sigmoid_out: 预期 Sigmoid(x)
+                print(f"   sigmoid_out      : {extract_val(sigmoid_out_plain, idx)}")
+                
+                # (7) silu_product_ast: 预期 x * Sigmoid(x)
+                print(f"   silu_product_ast : {extract_val(silu_prod_plain, idx)}")
+                print(f"   middle_mask_plain : {extract_val(middle_mask_plain, idx)}")
+                print(f"   is_pos_large_plain : {extract_val(is_pos_large_plain, idx)}")
+                print(f"   term_1_plain : {extract_val(term_1_plain, idx)}")
+                print(f"   term_3_plain : {extract_val(term_3_plain, idx)}")
+                print(f"   y_pred_cpu : {extract_val(y_pred_cpu, idx)}")
+                print(f"   b_all_plain : {extract_val(b_all_plain, idx)}")
+                print(f"   masked_plain : {extract_val(masked_plain, idx)}")
+                print(f"   V : {extract_val(V_share, idx)}")
+            print(f"\n{'='*50}\n", flush=True)
+
         return final_silu
+    
     elif method == "newer_time_1":
         # Debug 工具
         debug_history = []

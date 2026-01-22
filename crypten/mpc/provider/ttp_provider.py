@@ -30,7 +30,6 @@ class TrustedThirdParty(TupleProvider):
     def generate_additive_triple(self, size0, size1, op, device=None, *args, **kwargs):
         """Generate multiplicative triples of given sizes"""
         generator = TTPClient.get().get_generator(device=device)
-
         a = generate_random_ring_element(size0, generator=generator, device=device)
         b = generate_random_ring_element(size1, generator=generator, device=device)
         if comm.get().get_rank() == 0:
@@ -564,7 +563,7 @@ class TTPServer:
         encoder = FixedPointEncoder()
         
         # 1. 生成明文逻辑 (同 TFP)
-        a_abs = torch.rand(size, device=self.device) * 10 + 1 
+        a_abs = torch.rand(size, device=self.device) * 10 + 100 
         b_abs = torch.rand(size, device=self.device) * (a_abs * 1e-9) 
         
         sign = (torch.rand(size, device=self.device) > 0.5).float() * 2 - 1
