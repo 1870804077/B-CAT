@@ -5,7 +5,7 @@ debug:
   debug_mode: False
   validation_mode: False
 encoder:
-  precision_bits: 20
+  precision_bits: 16
 cost:
   estimate_cost: True
   estimate_mode: "comm"
@@ -17,14 +17,14 @@ functions:
   exp_iterations: 8
 
   # reciprocal configuration
-  reciprocal_method: "newer_debug"
+  reciprocal_method: "newer_time"
   reciprocal_nr_iters: 10
   reciprocal_log_iters: 1
-  reciprocal_all_pos: False
+  reciprocal_all_pos: True
   reciprocal_initial: null
 
   # sqrt configuration
-  sqrt_method: "NR"
+  sqrt_method: "newer_time"
   sqrt_nr_iters: 5
   sqrt_nr_initial: null
 
@@ -38,7 +38,7 @@ functions:
   tanh_ode_iter_num: 1024
 
   # softmax configuration
-  softmax_method: "newer_debug"
+  softmax_method: "newer"
   softmax_ode_clip: True
   softmax_ode_iter_num: 16
   softmax_ode_ub: 12

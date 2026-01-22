@@ -23,8 +23,8 @@ class TrustedFirstParty(TupleProvider):
 
     def generate_additive_triple(self, size0, size1, op, device=None, *args, **kwargs):
         """Generate multiplicative triples of given sizes"""
-        a = generate_random_ring_element(size0, device=device)
-        b = generate_random_ring_element(size1, device=device)
+        a = generate_random_ring_element(size0, device=device)%100
+        b = generate_random_ring_element(size1, device=device)%100
 
         c = getattr(torch, op)(a, b, *args, **kwargs)
 
@@ -43,7 +43,31 @@ class TrustedFirstParty(TupleProvider):
         stacked = torch_stack([r, r2])
         stacked = ArithmeticSharedTensor(stacked, precision=0, src=0)
         return stacked[0], stacked[1]
+
+    def cube_2(self, size, device=None, mode="cube"):
+        r = torch.randn(size, device=device)%10000
+        r2 = r.mul(r)
+        r3 = r2.mul(r)
+
+        r0 = ArithmeticSharedTensor(r,src=0)
+        r = ArithmeticSharedTensor(r, precision=0,src=0)
+        r2 = ArithmeticSharedTensor(r2, precision=0, src=0)
+        r3 = ArithmeticSharedTensor(r3, precision=0, src=0)
+        return r0,r,r2,r3
     
+    def cube_3(self, size, device=None, mode="cube"):
+        r_plain = torch.randn(size, device=device)
+        
+        # 提前计算好 r^2, r^3
+        r2_plain = r_plain ** 2
+        r3_plain = r_plain ** 3
+        
+        # 2. 加密成 MPC 张量
+        # crypten.cryptensor 会自动加上 Scale (默认 2^16)，保证和你的输入 x 同源
+        r = crypten.cryptensor(r_plain, src=0)
+        r2 = crypten.cryptensor(r2_plain, src=0)
+        r3 = crypten.cryptensor(r3_plain, src=0)
+        return r, r2, r3
     def cube(self, size, device=None, mode="cube"):
         """
         Generate triples.
@@ -187,22 +211,4 @@ class TrustedFirstParty(TupleProvider):
         rB = BinarySharedTensor(r, src=0)
 
         return rA, rB
-    def generate_triples(self, size, device=None):
-        """
-        Generate multiplicative triples (Beaver Triples) a, b, c where c = a * b.
-        Used for manual Beaver multiplication optimization.
-        """
-        # 1. 生成随机数 a, b
-        a = generate_random_ring_element(size, device=device)
-        b = generate_random_ring_element(size, device=device)
-        
-        # 2. 计算 c = a * b
-        c = a.mul(b)
-
-        # 3. 包装成 Share (TFP 模式下 src=0)
-        a = ArithmeticSharedTensor(a, precision=0, src=0)
-        b = ArithmeticSharedTensor(b, precision=0, src=0)
-        c = ArithmeticSharedTensor(c, precision=0, src=0)
-
-        return a, b, c
     
