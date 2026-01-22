@@ -1351,6 +1351,29 @@ class Not(Module):
     def from_onnx(attributes=None):
         return Not()
 
+class Greater(Module):
+    """
+    Module that calculates x > y element-wise.
+    """
+    def forward(self, input, other):
+        # CrypTen Tensor 支持 > 操作符，通常返回 0/1 张量
+        return input > other
+
+    @staticmethod
+    def from_onnx(attributes=None):
+        return Greater()
+
+class Less(Module):
+    """
+    Module that calculates x < y element-wise.
+    """
+    def forward(self, input, other):
+        return input < other
+
+    @staticmethod
+    def from_onnx(attributes=None):
+        return Less()
+
 class Erf(Module):
     """
     Module that calculates the error function of the given input tensor, element-wise.
