@@ -1,0 +1,28 @@
+==========================================================
+🚀 Batch Benchmark Started at 2026年 01月 24日 星期六 22:51:43 CST
+==========================================================
+
+##########################################################
+▶️  STARTING TASK: sst2 (Epochs: 1)
+##########################################################
+python: can't open file '/home/linch/sjh/B-CAT/examples/text-classification/test_var.py': [Errno 2] No such file or directory
+
+✅ Finished sst2
+
+##########################################################
+▶️  STARTING TASK: qnli (Epochs: 1)
+##########################################################
+python: can't open file '/home/linch/sjh/B-CAT/examples/text-classification/test_var.py': [Errno 2] No such file or directory
+
+✅ Finished qnli
+
+##########################################################
+▶️  STARTING TASK: cola (Epochs: 3)
+##########################################################
+python: can't open file '/home/linch/sjh/B-CAT/examples/text-classification/test_var.py': [Errno 2] No such file or directory
+
+✅ Finished cola
+
+==========================================================
+🎉 All tasks completed successfully!
+==========================================================

@@ -45,8 +45,8 @@ def test_sigmoid_range():
     x = (torch.rand(1, 128, 768) * 16) - 8 
     y_true = torch.sigmoid(x)
     x_enc = crypten.cryptensor(x)
-    for k1 in (1, 3):
-        for k2 in range(4, 13):
+    for k1 in range(1, 4):
+        for k2 in (8, 12):
             start = time.time()
             y_enc = x_enc.sigmoid(k1=k1, k2=k2, L=8.0)
             t = time.time() - start
@@ -276,14 +276,14 @@ if __name__ == "__main__":
     print(f"[Config] Current Precision Bits: {crypten.config.cfg.encoder.precision_bits}")
     
     # 根据需要取消注释
-    # test_sigmoid_range()
+    test_sigmoid_range()
     # test_tanh_range()
 
     # test_inv_sqrt_range()
     # test_reciprocal_range()
 
     # test_gelu_range()
-    test_silu_range()
+    # test_silu_range()
     
     # test_exp_range()
     # test_softmax_range()

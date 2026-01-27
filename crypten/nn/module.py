@@ -18,6 +18,9 @@ import torch.onnx.symbolic_helper as sym_help
 from crypten.common.functions.pooling import _adaptive_pool2d_helper
 from crypten.config import cfg
 
+from crypten.mpc.mpc import MPCTensor
+from crypten.mpc.primitives.arithmetic import ArithmeticSharedTensor
+
 class Module:
     """
     Base Module class that mimics the torch.nn.Module class.

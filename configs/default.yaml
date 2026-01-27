@@ -13,7 +13,7 @@ functions:
   max_method: "log_reduction"
   # method:"newer_debug"
   # exponential function
-  exp_method: "newer_debug"
+  exp_method: "newer_time"
   exp_iterations: 8
 
   # reciprocal configuration
@@ -69,7 +69,7 @@ functions:
   silu_fs_terms: 12
 mpc:
   active_security: False
-  provider: "TFP"
+  provider: "TTP"
   protocol: "beaver"
 nn:
   dpsmpc:

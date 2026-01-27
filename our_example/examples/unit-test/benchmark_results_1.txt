@@ -1,0 +1,472 @@
+Benchmark Report - Started at 2026-01-25 00:17:58
+============================================================
+
+📢 第 1 次测试循环
+
+==================== 🧪 Sigmoid Test ====================
+⚙️  Configuration: k1=1, k2=8
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 0.00002444
+   Avg Error: 0.00000908
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0072215s | Comm: 0.0076294MB | Rounds: 1
+   Shape (1, 1000): Time: 0.0070155s | Comm: 0.0152588MB | Rounds: 1
+   Shape (1, 1500): Time: 0.0093117s | Comm: 0.0228882MB | Rounds: 1
+   Shape (1, 2000): Time: 0.0073807s | Comm: 0.0305176MB | Rounds: 1
+============================================================
+
+==================== 🧪 Sigmoid Test ====================
+⚙️  Configuration: k1=1, k2=12
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 0.00000918
+   Avg Error: 0.00000280
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0100844s | Comm: 0.0076294MB | Rounds: 1
+   Shape (1, 1000): Time: 0.0083156s | Comm: 0.0152588MB | Rounds: 1
+   Shape (1, 1500): Time: 0.0075893s | Comm: 0.0228882MB | Rounds: 1
+   Shape (1, 2000): Time: 0.0077085s | Comm: 0.0305176MB | Rounds: 1
+============================================================
+
+==================== 🧪 Sigmoid Test ====================
+⚙️  Configuration: k1=2, k2=12
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 0.00000995
+   Avg Error: 0.00000278
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0073543s | Comm: 0.0076294MB | Rounds: 1
+   Shape (1, 1000): Time: 0.0072746s | Comm: 0.0152588MB | Rounds: 1
+   Shape (1, 1500): Time: 0.0075247s | Comm: 0.0228882MB | Rounds: 1
+   Shape (1, 2000): Time: 0.0072062s | Comm: 0.0305176MB | Rounds: 1
+============================================================
+
+==================== 🧪 Sigmoid Test ====================
+⚙️  Configuration: k1=3, k2=12
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 111.95360565
+   Avg Error: 0.12443577
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0086310s | Comm: 0.0076294MB | Rounds: 1
+   Shape (1, 1000): Time: 0.0082629s | Comm: 0.0152588MB | Rounds: 1
+   Shape (1, 1500): Time: 0.0085714s | Comm: 0.0228882MB | Rounds: 1
+   Shape (1, 2000): Time: 0.0087602s | Comm: 0.0305176MB | Rounds: 1
+============================================================
+
+==================== 🧪 Tanh Test ====================
+⚙️  Configuration: k1=1, k2=8
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 0.00110084
+   Avg Error: 0.00044862
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0071435s | Comm: 0.0076294MB | Rounds: 1
+   Shape (1, 1000): Time: 0.0072684s | Comm: 0.0152588MB | Rounds: 1
+   Shape (1, 1500): Time: 0.0071323s | Comm: 0.0228882MB | Rounds: 1
+   Shape (1, 2000): Time: 0.0071251s | Comm: 0.0305176MB | Rounds: 1
+============================================================
+
+==================== 🧪 Tanh Test ====================
+⚙️  Configuration: k1=1, k2=12
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 0.00005013
+   Avg Error: 0.00001688
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0072689s | Comm: 0.0076294MB | Rounds: 1
+   Shape (1, 1000): Time: 0.0070205s | Comm: 0.0152588MB | Rounds: 1
+   Shape (1, 1500): Time: 0.0072606s | Comm: 0.0228882MB | Rounds: 1
+   Shape (1, 2000): Time: 0.0073028s | Comm: 0.0305176MB | Rounds: 1
+============================================================
+
+==================== 🧪 Tanh Test ====================
+⚙️  Configuration: k1=2, k2=12
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 0.00004977
+   Avg Error: 0.00001688
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0073204s | Comm: 0.0076294MB | Rounds: 1
+   Shape (1, 1000): Time: 0.0070596s | Comm: 0.0152588MB | Rounds: 1
+   Shape (1, 1500): Time: 0.0071254s | Comm: 0.0228882MB | Rounds: 1
+   Shape (1, 2000): Time: 0.0073047s | Comm: 0.0305176MB | Rounds: 1
+============================================================
+
+==================== 🧪 Tanh Test ====================
+⚙️  Configuration: k1=3, k2=12
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 3663.59106445
+   Avg Error: 1.54171193
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0083163s | Comm: 0.0076294MB | Rounds: 1
+   Shape (1, 1000): Time: 0.0084410s | Comm: 0.0152588MB | Rounds: 1
+   Shape (1, 1500): Time: 0.0083292s | Comm: 0.0228882MB | Rounds: 1
+   Shape (1, 2000): Time: 0.0085928s | Comm: 0.0305176MB | Rounds: 1
+============================================================
+
+==================== 🧪 Exp Test ====================
+⚙️  Configuration: k1=1, k2=8
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 0.00841954
+   Avg Error: 0.00028196
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0071652s | Comm: 0.0076294MB | Rounds: 1
+   Shape (1, 1000): Time: 0.0091157s | Comm: 0.0152588MB | Rounds: 1
+   Shape (1, 1500): Time: 0.0070682s | Comm: 0.0228882MB | Rounds: 1
+   Shape (1, 2000): Time: 0.0067458s | Comm: 0.0305176MB | Rounds: 1
+============================================================
+
+==================== 🧪 Exp Test ====================
+⚙️  Configuration: k1=1, k2=12
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 0.00279953
+   Avg Error: 0.00007578
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0073094s | Comm: 0.0076294MB | Rounds: 1
+   Shape (1, 1000): Time: 0.0071862s | Comm: 0.0152588MB | Rounds: 1
+   Shape (1, 1500): Time: 0.0072722s | Comm: 0.0228882MB | Rounds: 1
+   Shape (1, 2000): Time: 0.0073543s | Comm: 0.0305176MB | Rounds: 1
+============================================================
+
+==================== 🧪 Exp Test ====================
+⚙️  Configuration: k1=2, k2=12
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 0.00161984
+   Avg Error: 0.00003852
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0083916s | Comm: 0.0076294MB | Rounds: 1
+   Shape (1, 1000): Time: 0.0084879s | Comm: 0.0152588MB | Rounds: 1
+   Shape (1, 1500): Time: 0.0079784s | Comm: 0.0228882MB | Rounds: 1
+   Shape (1, 2000): Time: 0.0085325s | Comm: 0.0305176MB | Rounds: 1
+============================================================
+
+==================== 🧪 Exp Test ====================
+⚙️  Configuration: k1=3, k2=12
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 64.00154114
+   Avg Error: 0.10330755
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0091567s | Comm: 0.0076294MB | Rounds: 1
+   Shape (1, 1000): Time: 0.0091283s | Comm: 0.0152588MB | Rounds: 1
+   Shape (1, 1500): Time: 0.0093174s | Comm: 0.0228882MB | Rounds: 1
+   Shape (1, 2000): Time: 0.0099280s | Comm: 0.0305176MB | Rounds: 1
+============================================================
+
+==================== 🧪 Erf Test ====================
+⚙️  Configuration: k1=1, k2=8
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 0.00003305
+   Avg Error: 0.00001479
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0072534s | Comm: 0.0076294MB | Rounds: 1
+   Shape (1, 1000): Time: 0.0073137s | Comm: 0.0152588MB | Rounds: 1
+   Shape (1, 1500): Time: 0.0069749s | Comm: 0.0228882MB | Rounds: 1
+   Shape (1, 2000): Time: 0.0070724s | Comm: 0.0305176MB | Rounds: 1
+============================================================
+
+==================== 🧪 Erf Test ====================
+⚙️  Configuration: k1=1, k2=12
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 0.00000855
+   Avg Error: 0.00000175
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0073564s | Comm: 0.0076294MB | Rounds: 1
+   Shape (1, 1000): Time: 0.0071542s | Comm: 0.0152588MB | Rounds: 1
+   Shape (1, 1500): Time: 0.0072689s | Comm: 0.0228882MB | Rounds: 1
+   Shape (1, 2000): Time: 0.0093858s | Comm: 0.0305176MB | Rounds: 1
+============================================================
+
+==================== 🧪 Erf Test ====================
+⚙️  Configuration: k1=2, k2=12
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 0.00000784
+   Avg Error: 0.00000174
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0076196s | Comm: 0.0076294MB | Rounds: 1
+   Shape (1, 1000): Time: 0.0071673s | Comm: 0.0152588MB | Rounds: 1
+   Shape (1, 1500): Time: 0.0073545s | Comm: 0.0228882MB | Rounds: 1
+   Shape (1, 2000): Time: 0.0070922s | Comm: 0.0305176MB | Rounds: 1
+============================================================
+
+==================== 🧪 Erf Test ====================
+⚙️  Configuration: k1=3, k2=12
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 0.00000924
+   Avg Error: 0.00000198
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0084043s | Comm: 0.0076294MB | Rounds: 1
+   Shape (1, 1000): Time: 0.0085342s | Comm: 0.0152588MB | Rounds: 1
+   Shape (1, 1500): Time: 0.0087166s | Comm: 0.0228882MB | Rounds: 1
+   Shape (1, 2000): Time: 0.0086467s | Comm: 0.0305176MB | Rounds: 1
+============================================================
+
+==================== 🧪 GeLU Test ====================
+⚙️  Configuration: k1=1, k2=8
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 9222833276157165568.00000000
+   Avg Error: 4598754937051021312.00000000
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0235586s | Comm: 0.0991821MB | Rounds: 3
+   Shape (1, 1000): Time: 0.0215063s | Comm: 0.1983643MB | Rounds: 3
+   Shape (1, 1500): Time: 0.0211723s | Comm: 0.2975464MB | Rounds: 3
+   Shape (1, 2000): Time: 0.0211856s | Comm: 0.3967285MB | Rounds: 3
+============================================================
+
+==================== 🧪 GeLU Test ====================
+⚙️  Configuration: k1=1, k2=12
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 9221533653413134336.00000000
+   Avg Error: 4653780271340978176.00000000
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0237298s | Comm: 0.0991821MB | Rounds: 3
+   Shape (1, 1000): Time: 0.0215011s | Comm: 0.1983643MB | Rounds: 3
+   Shape (1, 1500): Time: 0.0217338s | Comm: 0.2975464MB | Rounds: 3
+   Shape (1, 2000): Time: 0.0208602s | Comm: 0.3967285MB | Rounds: 3
+============================================================
+
+==================== 🧪 GeLU Test ====================
+⚙️  Configuration: k1=2, k2=12
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 9222495726087438336.00000000
+   Avg Error: 4605430896776970240.00000000
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0234599s | Comm: 0.0991821MB | Rounds: 3
+   Shape (1, 1000): Time: 0.0211756s | Comm: 0.1983643MB | Rounds: 3
+   Shape (1, 1500): Time: 0.0211833s | Comm: 0.2975464MB | Rounds: 3
+   Shape (1, 2000): Time: 0.0212183s | Comm: 0.3967285MB | Rounds: 3
+============================================================
+
+==================== 🧪 GeLU Test ====================
+⚙️  Configuration: k1=3, k2=12
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 9223109803331551232.00000000
+   Avg Error: 4621947210693607424.00000000
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0252655s | Comm: 0.0991821MB | Rounds: 3
+   Shape (1, 1000): Time: 0.0230103s | Comm: 0.1983643MB | Rounds: 3
+   Shape (1, 1500): Time: 0.0228648s | Comm: 0.2975464MB | Rounds: 3
+   Shape (1, 2000): Time: 0.0229521s | Comm: 0.3967285MB | Rounds: 3
+============================================================
+
+==================== 🧪 SiLU Test ====================
+⚙️  Configuration: k1=1, k2=8
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 9223198863773401088.00000000
+   Avg Error: 4614168715682906112.00000000
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0219803s | Comm: 0.0991821MB | Rounds: 3
+   Shape (1, 1000): Time: 0.0200219s | Comm: 0.1983643MB | Rounds: 3
+   Shape (1, 1500): Time: 0.0201631s | Comm: 0.2975464MB | Rounds: 3
+   Shape (1, 2000): Time: 0.0367079s | Comm: 0.3967285MB | Rounds: 3
+============================================================
+
+==================== 🧪 SiLU Test ====================
+⚙️  Configuration: k1=1, k2=12
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 9223347297843150848.00000000
+   Avg Error: 4614443043834036224.00000000
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0223007s | Comm: 0.0991821MB | Rounds: 3
+   Shape (1, 1000): Time: 0.0301914s | Comm: 0.1983643MB | Rounds: 3
+   Shape (1, 1500): Time: 0.0234449s | Comm: 0.2975464MB | Rounds: 3
+   Shape (1, 2000): Time: 0.0202291s | Comm: 0.3967285MB | Rounds: 3
+============================================================
+
+==================== 🧪 SiLU Test ====================
+⚙️  Configuration: k1=2, k2=12
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 9223008648261795840.00000000
+   Avg Error: 4615184664426971136.00000000
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0209768s | Comm: 0.0991821MB | Rounds: 3
+   Shape (1, 1000): Time: 0.0201952s | Comm: 0.1983643MB | Rounds: 3
+   Shape (1, 1500): Time: 0.0202680s | Comm: 0.2975464MB | Rounds: 3
+   Shape (1, 2000): Time: 0.0203784s | Comm: 0.3967285MB | Rounds: 3
+============================================================
+
+==================== 🧪 SiLU Test ====================
+⚙️  Configuration: k1=3, k2=12
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 9223046581412954112.00000000
+   Avg Error: 4618540373914943488.00000000
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0221572s | Comm: 0.0991821MB | Rounds: 3
+   Shape (1, 1000): Time: 0.0222034s | Comm: 0.1983643MB | Rounds: 3
+   Shape (1, 1500): Time: 0.0223310s | Comm: 0.2975464MB | Rounds: 3
+   Shape (1, 2000): Time: 0.0216527s | Comm: 0.3967285MB | Rounds: 3
+============================================================
+
+==================== 🧪 Reciprocal Test ====================
+⚙️  Configuration: k1=1, k2=8
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 149.77714539
+   Avg Error: 18.06849098
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0402179s | Comm: 0.1449585MB | Rounds: 5
+   Shape (1, 1000): Time: 0.0461080s | Comm: 0.2899170MB | Rounds: 5
+   Shape (1, 1500): Time: 0.0396390s | Comm: 0.4348755MB | Rounds: 5
+   Shape (1, 2000): Time: 0.0401325s | Comm: 0.5798340MB | Rounds: 5
+============================================================
+
+==================== 🧪 Reciprocal Test ====================
+⚙️  Configuration: k1=1, k2=12
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 147.70753479
+   Avg Error: 18.08862114
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0404532s | Comm: 0.1449585MB | Rounds: 5
+   Shape (1, 1000): Time: 0.0394466s | Comm: 0.2899170MB | Rounds: 5
+   Shape (1, 1500): Time: 0.0564938s | Comm: 0.4348755MB | Rounds: 5
+   Shape (1, 2000): Time: 0.0476437s | Comm: 0.5798340MB | Rounds: 5
+============================================================
+
+==================== 🧪 Reciprocal Test ====================
+⚙️  Configuration: k1=2, k2=12
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 150.30972290
+   Avg Error: 17.84263802
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0448971s | Comm: 0.1449585MB | Rounds: 5
+   Shape (1, 1000): Time: 0.0445416s | Comm: 0.2899170MB | Rounds: 5
+   Shape (1, 1500): Time: 0.0540333s | Comm: 0.4348755MB | Rounds: 5
+   Shape (1, 2000): Time: 0.0553570s | Comm: 0.5798340MB | Rounds: 5
+============================================================
+
+==================== 🧪 Reciprocal Test ====================
+⚙️  Configuration: k1=3, k2=12
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 174.12161255
+   Avg Error: 17.80034447
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0491161s | Comm: 0.1449585MB | Rounds: 5
+   Shape (1, 1000): Time: 0.0483117s | Comm: 0.2899170MB | Rounds: 5
+   Shape (1, 1500): Time: 0.0506799s | Comm: 0.4348755MB | Rounds: 5
+   Shape (1, 2000): Time: 0.0489240s | Comm: 0.5798340MB | Rounds: 5
+============================================================
+
+==================== 🧪 InvSqrt Test ====================
+⚙️  Configuration: k1=1, k2=8
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 69.30787659
+   Avg Error: 2.19360542
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0542271s | Comm: 0.1449585MB | Rounds: 6
+   Shape (1, 1000): Time: 0.0561659s | Comm: 0.2899170MB | Rounds: 6
+   Shape (1, 1500): Time: 0.0918078s | Comm: 0.4348755MB | Rounds: 6
+   Shape (1, 2000): Time: 0.0611238s | Comm: 0.5798340MB | Rounds: 6
+============================================================
+
+==================== 🧪 InvSqrt Test ====================
+⚙️  Configuration: k1=1, k2=12
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 88.85665894
+   Avg Error: 2.23742414
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0567102s | Comm: 0.1449585MB | Rounds: 6
+   Shape (1, 1000): Time: 0.0541656s | Comm: 0.2899170MB | Rounds: 6
+   Shape (1, 1500): Time: 0.0804160s | Comm: 0.4348755MB | Rounds: 6
+   Shape (1, 2000): Time: 0.0647817s | Comm: 0.5798340MB | Rounds: 6
+============================================================
+
+==================== 🧪 InvSqrt Test ====================
+⚙️  Configuration: k1=2, k2=12
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 92.27492523
+   Avg Error: 2.15994191
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0749571s | Comm: 0.1449585MB | Rounds: 6
+   Shape (1, 1000): Time: 0.0590665s | Comm: 0.2899170MB | Rounds: 6
+   Shape (1, 1500): Time: 0.0603058s | Comm: 0.4348755MB | Rounds: 6
+   Shape (1, 2000): Time: 0.0688875s | Comm: 0.5798340MB | Rounds: 6
+============================================================
+
+==================== 🧪 InvSqrt Test ====================
+⚙️  Configuration: k1=3, k2=12
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 73.15670776
+   Avg Error: 2.17056847
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0895681s | Comm: 0.1449585MB | Rounds: 6
+   Shape (1, 1000): Time: 0.0655003s | Comm: 0.2899170MB | Rounds: 6
+   Shape (1, 1500): Time: 0.0667799s | Comm: 0.4348755MB | Rounds: 6
+   Shape (1, 2000): Time: 0.0632885s | Comm: 0.5798340MB | Rounds: 6
+============================================================
+
+==================== 🧪 Softmax Test ====================
+⚙️  Configuration: k1=1, k2=8
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 0.09987802
+   Avg Error: 0.00779803
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.1046813s | Comm: 0.0918579MB | Rounds: 10
+   Shape (1, 1000): Time: 0.0711615s | Comm: 0.1834106MB | Rounds: 10
+   Shape (1, 1500): Time: 0.0746465s | Comm: 0.2749634MB | Rounds: 10
+   Shape (1, 2000): Time: 0.0742435s | Comm: 0.3665161MB | Rounds: 10
+============================================================
+
+==================== 🧪 Softmax Test ====================
+⚙️  Configuration: k1=1, k2=12
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 0.09184449
+   Avg Error: 0.00779295
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0741282s | Comm: 0.0918579MB | Rounds: 10
+   Shape (1, 1000): Time: 0.0709264s | Comm: 0.1834106MB | Rounds: 10
+   Shape (1, 1500): Time: 0.0749109s | Comm: 0.2749634MB | Rounds: 10
+   Shape (1, 2000): Time: 0.0752487s | Comm: 0.3665161MB | Rounds: 10
+============================================================
+
+==================== 🧪 Softmax Test ====================
+⚙️  Configuration: k1=2, k2=12
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 0.04542810
+   Avg Error: 0.00829316
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.0813811s | Comm: 0.0918579MB | Rounds: 10
+   Shape (1, 1000): Time: 0.0808990s | Comm: 0.1834106MB | Rounds: 10
+   Shape (1, 1500): Time: 0.0780325s | Comm: 0.2749634MB | Rounds: 10
+   Shape (1, 2000): Time: 0.0793524s | Comm: 0.3665161MB | Rounds: 10
+============================================================
+
+==================== 🧪 Softmax Test ====================
+⚙️  Configuration: k1=3, k2=12
+--------------------------------------------------
+✅ Precision Check:
+   Max Error: 0.15854663
+   Avg Error: 0.07981489
+🚀 Performance (Avg over 1 runs):
+   Shape (1, 500): Time: 0.1088924s | Comm: 0.0918579MB | Rounds: 10
+   Shape (1, 1000): Time: 0.0880136s | Comm: 0.1834106MB | Rounds: 10
+   Shape (1, 1500): Time: 0.1020491s | Comm: 0.2749634MB | Rounds: 10
+   Shape (1, 2000): Time: 0.0861902s | Comm: 0.3665161MB | Rounds: 10
+============================================================
