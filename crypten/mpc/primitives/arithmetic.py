@@ -483,19 +483,6 @@ class ArithmeticSharedTensor(object):
 
     def matmul(self, y):
         """Perform matrix multiplication using some tensor"""
-        from crypten.mpc.mpc import MPCTensor
-        from crypten.mpc.primitives.arithmetic import ArithmeticSharedTensor
-        import crypten # 确保能访问 crypten.mpc.arithmetic
-
-        if isinstance(y, ArithmeticSharedTensor):
-            # 1. 创建空壳
-            result = MPCTensor.__new__(MPCTensor)
-            # 2. 注入数据
-            result._tensor = y
-            # 3. 【关键新增】手动补全属性
-            result.ptype = crypten.mpc.arithmetic
-            result.encoder = self.encoder  # 继承输入张量的编码器
-            return result
         return self._arithmetic_function(y, "matmul")
 
     def conv1d(self, kernel, **kwargs):

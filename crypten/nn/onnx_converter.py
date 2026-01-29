@@ -38,8 +38,7 @@ except ImportError:
     SYM_REGISTRY = False
 
 
-_OPSET_VERSION = 12
-
+_OPSET_VERSION = 17
 
 def from_onnx(onnx_string_or_file):
     """

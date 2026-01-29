@@ -69,7 +69,7 @@ from .module import (
     Sum,
     Transpose,
     Unsqueeze,
-    Where,
+    Where
 )
 from .onnx_converter import from_onnx, from_pytorch, from_tensorflow, TF_AND_TF2ONNX
 

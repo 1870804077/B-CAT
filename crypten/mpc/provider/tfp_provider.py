@@ -35,12 +35,7 @@ class TrustedFirstParty(TupleProvider):
         return a, b, c
 
     def generate_3smp_triple(self, size, device=None):
-        """
-        [TFP] 生成通用 3SMP 所需的 7 元组: (a, b, c, ab, bc, ca, abc)
-        用于计算 x * y * z
-        """
         if comm.get().get_rank() == 0:
-            # Rank 0: 生成随机数并计算乘积 (Ring Arithmetic 会自动溢出截断，符合 MPC 要求)
             a = generate_random_ring_element(size, device=device)
             b = generate_random_ring_element(size, device=device)
             c = generate_random_ring_element(size, device=device)
@@ -50,17 +45,14 @@ class TrustedFirstParty(TupleProvider):
             ca = c.mul(a)
             abc = ab.mul(c)
         else:
-            # Rank > 0: 占位符 (src=0 的 AST 会自动忽略非 Source 方的输入并接收数据)
             dummy = torch.empty(size, device=device)
             a = b = c = ab = bc = ca = abc = dummy
 
-        # 转换为 ArithmeticSharedTensor 并分发
         results = [
             ArithmeticSharedTensor(x, precision=0, src=0) 
             for x in [a, b, c, ab, bc, ca, abc]
         ]
         
-        # 返回 tuple
         return tuple(results)
     def square(self, size, device=None):
         """Generate square double of given size"""
@@ -73,29 +65,39 @@ class TrustedFirstParty(TupleProvider):
         return stacked[0], stacked[1]
 
     def cube_2(self, size, device=None, mode="cube"):
-        r = torch.randn(size, device=device)%10000
-        r2 = r.mul(r)
-        r3 = r2.mul(r)
+        """
+        Generate triples.
+        mode="cube": Returns (r, r^2, r^3)
+        mode="xy_square": Returns (l1, l2, l1*l2, l2^2, l1*l2^2)
+        """
+        if mode == "cube":
+            r = generate_random_ring_element(size, device=device)
+            # r= torch.randint(-10000,10000,size, device=device)
+            r2 = r.mul(r)
+            r3 = r2.mul(r)
+            
+            stacked = torch_stack([r, r2, r3])
+            stacked = ArithmeticSharedTensor(stacked, precision=0, src=0)
+            return stacked[0], stacked[1], stacked[2]
 
-        r0 = ArithmeticSharedTensor(r,src=0)
-        r = ArithmeticSharedTensor(r, precision=0,src=0)
-        r2 = ArithmeticSharedTensor(r2, precision=0, src=0)
-        r3 = ArithmeticSharedTensor(r3, precision=0, src=0)
-        return r0,r,r2,r3
-    
-    def cube_3(self, size, device=None, mode="cube"):
-        r_plain = torch.randn(size, device=device)
+        elif mode == "xy_square":
+            l1 = generate_random_ring_element(size, device=device)%100
+            l2 = generate_random_ring_element(size, device=device)%100
+            
+            l1_l2 = l1.mul(l2)
+            l2_sq = l2.mul(l2)
+            l1_l2_sq = l1.mul(l2_sq)
+
+            l1 = ArithmeticSharedTensor(l1.float(), precision=0, src=0)
+            l2 = ArithmeticSharedTensor(l2.float(), precision=0, src=0)
+            l1_l2 = ArithmeticSharedTensor(l1_l2.float(), precision=8, src=0)
+            l2_sq = ArithmeticSharedTensor(l2_sq.float(), precision=8, src=0)
+            l1_l2_sq = ArithmeticSharedTensor(l1_l2_sq.float(), precision=8, src=0)
+            
+            return l1, l2, l1_l2, l2_sq, l1_l2_sq
         
-        # 提前计算好 r^2, r^3
-        r2_plain = r_plain ** 2
-        r3_plain = r_plain ** 3
-        
-        # 2. 加密成 MPC 张量
-        # crypten.cryptensor 会自动加上 Scale (默认 2^16)，保证和你的输入 x 同源
-        r = crypten.cryptensor(r_plain, src=0)
-        r2 = crypten.cryptensor(r2_plain, src=0)
-        r3 = crypten.cryptensor(r3_plain, src=0)
-        return r, r2, r3
+        else:
+            raise ValueError(f"Unknown cube mode: {mode}")
     def cube_1(self, size, device=None, mode="cube"):
         """
         Generate triples.
@@ -123,7 +125,6 @@ class TrustedFirstParty(TupleProvider):
             stacked = torch_stack([l1, l2, l1_l2, l2_sq, l1_l2_sq])
             stacked = ArithmeticSharedTensor(stacked, precision=0, src=0)
             
-            # 按顺序返回: l1, l2, l1_l2, l2_sq, l1_l2_sq
             return stacked[0], stacked[1], stacked[2], stacked[3], stacked[4]
         
         else:
@@ -155,45 +156,33 @@ class TrustedFirstParty(TupleProvider):
             stacked = torch_stack([l1, l2, l1_l2, l2_sq, l1_l2_sq])
             stacked = ArithmeticSharedTensor(stacked, precision=0, src=0)
             
-            # 按顺序返回: l1, l2, l1_l2, l2_sq, l1_l2_sq
             return stacked[0], stacked[1], stacked[2], stacked[3], stacked[4]
         
         else:
             raise ValueError(f"Unknown cube mode: {mode}")
         
     def generate_gelu_offline_batch(self, input_size, double_size, period, terms, device=None):
-        """
-        [TFP 模式 - 修复版] 
-        修复了 Rank 1 因分配大小为 0 导致的崩溃问题。
-        """
         from crypten.encoder import FixedPointEncoder
         encoder = FixedPointEncoder()
         
-        # 1. [关键] 全员计算总大小 (Rank 0 和 Rank 1 都要算！)
         num_double = double_size.numel() if isinstance(double_size, torch.Size) else torch.tensor(double_size).prod().item()
         num_input = input_size.numel() if isinstance(input_size, torch.Size) else torch.tensor(input_size).prod().item()
         
-        # 计算各个部分的长度
         len_cmp = 4 * num_double
         len_trip_d = 3 * num_double
         len_trip_i = 3 * num_input
         len_hybrid = (3 + 2 * terms) * num_input
         
-        # 总长度
         total_len = len_cmp + len_trip_d + len_hybrid + len_trip_i + len_trip_d
         
-        # 2. 准备数据容器
         if comm.get().get_rank() == 0:
-            # === Rank 0: 生成真实数据 ===
-            
-            # Helper: 生成 CMP
+
             a = torch.rand(double_size, device=device) * 10 + 100 
             b = torch.rand(double_size, device=device) * (a * 1e-9)
             r = torch.ones(double_size, device=device)
             c = torch.zeros(double_size, device=device)
             raw_cmp = torch.cat([encoder.encode(x, device=device).reshape(-1) for x in [a,b,r,c]])
             
-            # Helper: 生成 Triple
             def gen_triple_plain(sz):
                 ta = torch.rand(sz, device=device)
                 tb = torch.rand(sz, device=device)
@@ -204,7 +193,6 @@ class TrustedFirstParty(TupleProvider):
             raw_trip2 = gen_triple_plain(input_size)
             raw_trip3 = gen_triple_plain(double_size)
             
-            # Helper: 生成 Hybrid
             scale = 100.0 if period > 50 else period
             t = torch.rand(input_size, device=device) * scale
             k = [i * 2 * math.pi / period for i in range(1, terms + 1)]
@@ -220,23 +208,16 @@ class TrustedFirstParty(TupleProvider):
                 encoder.encode(t3, device=device).reshape(-1)
             ])
             
-            # 打包所有数据
             flat_data = torch.cat([raw_cmp, raw_trip1, raw_hybrid, raw_trip2, raw_trip3])
             
-            # 双重检查大小 (Debugging)
             assert flat_data.numel() == total_len, f"Size mismatch! Calc: {total_len}, Real: {flat_data.numel()}"
             
         else:
-            # === Rank 1: 准备正确大小的空篮子 ===
-            # ❌ 之前的错误: flat_data = torch.empty(0, device=device)
-            # ✅ 现在的修正:
+
             flat_data = torch.empty(total_len, device=device)
 
-        # 3. 一次性分发 (Scatter)
-        # 此时 Rank 1 已经有了大小为 total_len 的容器，可以正确接收数据了
         packed_ast = ArithmeticSharedTensor(flat_data, precision=0, src=0)
         
-        # 4. 解包 (Slicing)
         cursor = 0
         def pull_ast(length):
             nonlocal cursor
@@ -244,7 +225,6 @@ class TrustedFirstParty(TupleProvider):
             cursor += length
             return res
             
-        # CMP
         res_cmp_chunk = pull_ast(4 * num_double).reshape(4, *double_size)
         res_cmp = tuple(res_cmp_chunk[i] for i in range(4))
         
@@ -272,13 +252,6 @@ class TrustedFirstParty(TupleProvider):
         return res_cmp, res_trip1, res_hybrid, res_trip2, res_trip3
     
     def generate_hybrid_triple(self, size, period, terms, device=None):
-        """
-        生成混合元组，同时支持傅里叶级数和立方计算。
-        返回: 
-        - t: 随机掩码 (也是多项式的 r)
-        - u, v: sin(kt), cos(kt) (用于 Fourier)
-        - t2, t3: t^2, t^3 (用于 x^3 计算)
-        """
         if period > 50.0:
             scale = 100.0 
         else:
@@ -300,13 +273,6 @@ class TrustedFirstParty(TupleProvider):
         return t, u, v, t2, t3
     
     def generate_hybrid_triple_1(self, size, period, terms, device=None):
-        """
-        生成混合元组，同时支持傅里叶级数和立方计算。
-        返回: 
-        - t: 随机掩码 (也是多项式的 r)
-        - u, v: sin(kt), cos(kt) (用于 Fourier)
-        - t2, t3: t^2, t^3 (用于 x^3 计算)
-        """
         if period > 50.0:
             scale = 100.0 
         else:
@@ -324,28 +290,44 @@ class TrustedFirstParty(TupleProvider):
         return t, u, v
 
     def generate_cmp_aux(self, size, device=None):
-            """
-            生成 Protocol 4 (CMP+) 所需的辅助随机数 (a, b, r, c)。
-            对应论文中 Offline Phase。
-            """
-            a_abs = torch.rand(size, device=device) * 10 + 1 
-            
-            b_abs = torch.rand(size, device=device) * (a_abs * 1e-9) 
-            
-            sign = (torch.rand(size, device=device) > 0.5).float() * 2 - 1
-            
-            a = a_abs * sign
-            b = b_abs * sign
+        a_abs = torch.rand(size, device=device) * 10 + 1 
+        
+        b_abs = torch.rand(size, device=device) * (a_abs * 1e-9) 
+        
+        sign = (torch.rand(size, device=device) > 0.5).float() * 2 - 1
+        
+        a = a_abs * sign
+        b = b_abs * sign
 
-            r = sign 
-            c = (1 - sign) / 2
-            
-            enc_a = ArithmeticSharedTensor(a, src=0)
-            enc_b = ArithmeticSharedTensor(b, src=0)
-            enc_r = ArithmeticSharedTensor(r, src=0)
-            enc_c = ArithmeticSharedTensor(c, src=0)
-            
-            return enc_a, enc_b, enc_r, enc_c
+        r = sign 
+        c = (1 - sign) / 2
+        
+        enc_a = ArithmeticSharedTensor(a, precision=0, src=0)
+        enc_b = ArithmeticSharedTensor(b, src=0)
+        enc_r = ArithmeticSharedTensor(r, src=0)
+        enc_c = ArithmeticSharedTensor(c, src=0)
+        
+        return enc_a, enc_b, enc_r, enc_c
+    
+    def generate_cmp_aux(self, size, device=None):
+        a_abs = torch.rand(size, device=device) * 10 + 1 
+        
+        b_abs = torch.rand(size, device=device) * (a_abs * 1e-9) 
+        
+        sign = (torch.rand(size, device=device) > 0.5).float() * 2 - 1
+        
+        a = a_abs * sign
+        b = b_abs * sign
+
+        r = sign 
+        c = (1 - sign) / 2
+        
+        enc_a = ArithmeticSharedTensor(a,  src=0)
+        enc_b = ArithmeticSharedTensor(b, src=0)
+        enc_r = ArithmeticSharedTensor(r, src=0)
+        enc_c = ArithmeticSharedTensor(c, src=0)
+        
+        return enc_a, enc_b, enc_r, enc_c
 
     def generate_trig_triple(self, size, period, terms, device=None):
         """Generate trigonometric triple of given size"""
