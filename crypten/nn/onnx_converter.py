@@ -40,7 +40,6 @@ except ImportError:
 
 _OPSET_VERSION = 17
 
-
 def from_onnx(onnx_string_or_file):
     """
     Converts an ONNX model serialized in an `onnx_string_or_file` to a CrypTen model.
@@ -367,7 +366,8 @@ def _onnx_crypten_dropout(g, input, p, train):
     CrypTen-specific conversion.
     """
     ratio = g.op("Constant", value_t=torch.tensor(p))
-    training_mode = g.op("Constant", value_t=torch.tensor(train))
+    # training_mode = g.op("Constant", value_t=torch.tensor(train))
+    training_mode = g.op("Constant", value_t=torch.tensor(train, dtype=torch.bool))
     r, _ = g.op("Dropout", input, ratio, training_mode, outputs=2)
     return r
 

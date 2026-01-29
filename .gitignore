@@ -158,3 +158,82 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
+<<<<<<< HEAD
+
+
+# 1. 屏蔽大模型文件（BERT/LLM 等模型权重）
+*.bin
+*.safetensors
+*.ckpt
+*.pth
+*.h5
+*.pt
+*.pkl
+*.joblib
+*.onnx
+*.tflite
+*.pb
+*.meta
+*.index
+*.data-00000-of-00001
+
+# 2. 屏蔽模型缓存/下载文件夹（HuggingFace/Transformers 等）
+*/bert-base-uncased/
+*/roberta-base/
+*/gpt2/
+*/llama-*
+*/chatglm-*
+.huggingface/
+.cache/huggingface/
+.cache/torch/
+model_cache/
+downloads/
+
+# 3. 屏蔽训练/推理 checkpoint 文件夹
+checkpoints/
+ckpts/
+outputs/
+runs/
+tensorboard/
+wandb/
+lightning_logs/
+logs/
+
+# 4. 屏蔽数据文件（大数据集/中间数据）
+*.csv.gz
+*.tar.gz
+*.zip
+*.7z
+*.rar
+*.parquet
+*.feather
+*.npy
+*.npz
+data/
+dataset/
+datasets/
+raw_data/
+processed_data/
+
+# 5. 屏蔽系统/工具临时文件
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+*.tmp
+*.log
+*.err
+*.out
+*.lock
+
+# 6. 屏蔽 Docker/容器相关（若用到）
+.dockerignore
+docker-compose.override.yml
+*.dockerfile.bak
+
+# 7. 屏蔽远程连接/SSH 相关
+*.pub
+*.key
+.ssh/
+=======
+>>>>>>> main

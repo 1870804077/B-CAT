@@ -277,7 +277,7 @@ class ArithmeticSharedTensor(object):
             [tensor.share for tensor in tensors], *args, **kwargs
         )
         return result
-
+    
     @staticmethod
     def reveal_batch(tensor_or_list, dst=None):
         """Get (batched) plaintext without any downscaling"""
@@ -602,14 +602,14 @@ class ArithmeticSharedTensor(object):
     def square(self):
         return self.clone().square_()
 
-    def cube_(self, y=None, scale_y=True):
+    def cube_(self, y=None, scale_y=True,mode="cube"):
         protocol = globals()[cfg.mpc.protocol]
-        res = protocol.cube(self, y=y, scale_y=True)
+        res = protocol.cube(self, y=y, scale_y=True,mode=mode)
         self.share = res.div_(self.encoder.scale).div_(self.encoder.scale).share
         return self
 
-    def cube(self, y=None, scale_y=True):
-        return self.clone().cube_(y)
+    def cube(self, y=None, scale_y=True,mode="cube"):
+        return self.clone().cube_(y,mode=mode)
     
     def where(self, condition, y):
         """Selects elements from self or y based on condition

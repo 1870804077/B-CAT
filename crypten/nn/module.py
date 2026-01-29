@@ -18,6 +18,9 @@ import torch.onnx.symbolic_helper as sym_help
 from crypten.common.functions.pooling import _adaptive_pool2d_helper
 from crypten.config import cfg
 
+from crypten.mpc.mpc import MPCTensor
+from crypten.mpc.primitives.arithmetic import ArithmeticSharedTensor
+
 class Module:
     """
     Base Module class that mimics the torch.nn.Module class.
@@ -778,7 +781,7 @@ class Graph(Container):
             if len(input) == 1:
                 input = input[0]  # unpack iterable if possible
             module = self._modules[node_to_compute]
-
+            # print(f"🚀 Executing Node: {node_to_compute} | Module: {type(module).__name__}")
             crypten.reset_communication_stats()
             module_start_time = time.time()
             output = module(input)
@@ -1216,6 +1219,30 @@ class Add(Module):
     def forward(self, input):
         assert isinstance(input, (list, tuple)), "input must be list or tuple"
         assert len(input) == 2, "input must contain two tensors"
+        # import traceback
+        # import sys
+        # import crypten
+        # === 🛡️ 调试代码开始 ===
+        # 检查形状是否不匹配
+        # if input[0].shape != input[1].shape:
+        #     # 捕获异常维度的特征（例如这里的 2）
+        #     bad_dim_found = False
+        #     if hasattr(input[0], 'size') and input[0].size(0) == 2: bad_dim_found = True
+        #     if hasattr(input[1], 'size') and input[1].size(0) == 2: bad_dim_found = True
+            
+        #     # 只有当检测到异常维度时才打印，避免刷屏
+        #     if bad_dim_found: 
+        #         print(f"\n💀 [CRITICAL SHAPE MISMATCH IN ADD LAYER]")
+        #         print(f"   Input[0] type: {type(input[0])} | shape: {input[0].shape}")
+        #         print(f"   Input[1] type: {type(input[1])} | shape: {input[1].shape}")
+        #         print("-" * 40)
+        #         print("🕵️  **CALL STACK (Who called me?):**")
+        #         # 打印完整的调用栈，帮助您定位是哪一层 BERT/GPT 调用了这个 Add
+        #         traceback.print_stack(file=sys.stdout) 
+        #         print("-" * 40)
+        #         print("   🚨 Suggestion: Check the layer showing up just before 'Add.forward' in the stack trace.")
+        #         sys.stdout.flush() # 强制刷新缓冲区，确保在 crash 前看到输出
+        # # === 🛡️ 调试代码结束 ===
         if crypten.is_encrypted_tensor(input[0]) is not True and crypten.is_encrypted_tensor(input[1]):
             return input[1].add(input[0])
         else:
@@ -1317,6 +1344,62 @@ class Exp(Module):
     def from_onnx(attributes=None):
         return Exp()
 
+class Sin(Module):
+    """
+    Module that calculates the sine of the given input tensor, element-wise.
+    """
+    def forward(self, input):
+        return input.sin()
+
+    @staticmethod
+    def from_onnx(attributes=None):
+        return Sin()
+
+class Cos(Module):
+    """
+    Module that calculates the cosine of the given input tensor, element-wise.
+    """
+    def forward(self, input):
+        return input.cos()
+
+    @staticmethod
+    def from_onnx(attributes=None):
+        return Cos()
+    
+class Not(Module):
+    """
+    Module that calculates the logical negation of the given input tensor.
+    Usually corresponds to ONNX 'Not' operator.
+    """
+    def forward(self, input):
+        return input.logical_not()
+
+    @staticmethod
+    def from_onnx(attributes=None):
+        return Not()
+
+class Greater(Module):
+    """
+    Module that calculates x > y element-wise.
+    """
+    def forward(self, input, other):
+        # CrypTen Tensor 支持 > 操作符，通常返回 0/1 张量
+        return input > other
+
+    @staticmethod
+    def from_onnx(attributes=None):
+        return Greater()
+
+class Less(Module):
+    """
+    Module that calculates x < y element-wise.
+    """
+    def forward(self, input, other):
+        return input < other
+
+    @staticmethod
+    def from_onnx(attributes=None):
+        return Less()
 
 class Erf(Module):
     """
@@ -1443,25 +1526,38 @@ class Squeeze(Module):
             this dimension
     """
 
-    def __init__(self):
+    def __init__(self, dim=None):
         super().__init__()
+        self.dim = dim
 
     def forward(self, input, dim=None):
         if isinstance(input, list):
             assert len(input) == 2, "list input must be [x, dimension]"
             input, dim = input
-            assert len(dim) == 1, "can only unsqueeze one dimension at a time"
+            assert len(dim) == 1, "can only squeeze one dimension at a time"
             dim = int(dim.item())
+        
+        # 优先使用 forward 传入的 dim，如果没有则使用初始化时的 dim
+        if dim is None:
+            dim = self.dim
+            
         return input.squeeze(dim)
 
     @staticmethod
     def from_onnx(attributes=None):
-        return Squeeze()
         if attributes is None:
             attributes = {}
-        dimension = attributes["axes"]
-        assert len(dimension) == 1, "can only squeeze one dimension at a time"
-        return Squeeze(dimension[0])
+        
+        # 获取 axes 属性
+        dimension = attributes.get("axes", None)
+        
+        # 如果有 axes，取第一个（CrypTen 似乎只支持单维 squeeze）
+        dim = None
+        if dimension is not None:
+            assert len(dimension) == 1, "can only squeeze one dimension at a time"
+            dim = dimension[0]
+            
+        return Squeeze(dim)
 
 
 class Unsqueeze(Module):
@@ -3190,6 +3286,56 @@ class LayerNormalization(Module):
         if bias is not None:
             out = out + bias
         return out
+    # def forward(self, x):
+    #     import crypten.communicator as comm  # 确保引入通信器
+
+    #     # === 定义一个内部辅助函数，用来打印每一步的增量 ===
+    #     def log_step_cost(step_name, last_stats):
+    #         current_stats = comm.get().get_communication_stats()
+    #         # 计算增量
+    #         delta_rounds = current_stats['rounds'] - last_stats['rounds']
+    #         delta_bytes = current_stats['bytes'] - last_stats['bytes']
+            
+    #         # 打印日志 (字节数转换为 KB 显示更直观)
+    #         print(f"📊 [LayerNorm] {step_name:<12} | Rounds: {delta_rounds:<3} | Bytes: {delta_bytes/1024:.2f} KB")
+            
+    #         return current_stats # 更新基准状态
+
+    #     assert len(x) == 3, f"LayerNormalization expects 3 inputs, not {len(x)}"
+    #     # layernorm input: torch.Size([1, l, 768]), scale: torch.Size([768]), bias: torch.Size([768])
+    #     input, scale, bias = x
+
+    #     # [计时起点] 获取初始状态
+    #     stats = comm.get().get_communication_stats()
+
+    #     # 1. 计算均值 (Mean)
+    #     mean = input.mean(dim=self.axis, keepdim=True)
+    #     stats = log_step_cost("Mean", stats)
+
+    #     # 2. 计算方差 (Variance) - 先算好 variance，还没做 inv_sqrt
+    #     # 注意：这里把 var 和 +eps 放在一起测，加法通常是本地的无通信
+    #     variance_val = input.var(dim=self.axis, keepdim=True) + self.eps
+    #     stats = log_step_cost("Variance", stats)
+
+    #     # 3. 计算倒数平方根 (InvSqrt) - 这是刚才修复的核心近似函数
+    #     inv_sd = variance_val.inv_sqrt()
+    #     stats = log_step_cost("InvSqrt", stats)
+
+    #     # 4. 归一化 (Normalize) - 包含减法和乘法
+    #     out = (input - mean) * inv_sd
+    #     stats = log_step_cost("Norm (Sub+Mul)", stats)
+
+    #     # 5. 仿射变换 - Scale (乘法)
+    #     if scale is not None:
+    #         out = out * scale
+    #         stats = log_step_cost("Affine Scale", stats)
+
+    #     # 6. 仿射变换 - Bias (加法)
+    #     if bias is not None:
+    #         out = out + bias
+    #         stats = log_step_cost("Affine Bias", stats)
+
+    #     return out
 
     @staticmethod
     def from_onnx(attributes=None):
@@ -3218,20 +3364,44 @@ class Split(Module):
     """
     Module that performs split operation following the ONNX specification.
     """
-    def __init__(self, dim=0):
+    def __init__(self, split_size_or_sections=None, dim=0):
         super().__init__()
-        self.dim=dim
+        self.dim = dim
+        self.split_size_or_sections = split_size_or_sections
 
     def forward(self, x):
-        input, split_size = x
-        split_size = split_size.int().tolist()
-        return input.split(split_size=split_size, dim=self.dim)
+        # 情况 1: split_size 作为输入传递 (动态 Split, ONNX Opset >= 13)
+        if isinstance(x, (list, tuple)) and len(x) == 2:
+            input, split_size = x
+            # 如果是 tensor，转为 list
+            if hasattr(split_size, "int"):
+                split_size = split_size.int().tolist()
+            return input.split(split_size=split_size, dim=self.dim)
+        
+        # 情况 2: split_size 作为属性存储 (静态 Split, ONNX Opset < 13)
+        elif isinstance(x, (list, tuple)) and len(x) == 1:
+            if self.split_size_or_sections is None:
+                # 如果没有 split 属性，PyTorch 的默认行为是均分，但在 ONNX 中 split 通常是必须的
+                # 这里尝试抛出更清晰的错误，或者如果您的场景允许，可以尝试 input.chunk
+                raise RuntimeError("Split module received 1 input but no 'split' attribute was found during initialization.")
+            return x[0].split(self.split_size_or_sections, dim=self.dim)
+            
+        # 情况 3: 输入直接是 Tensor (未包装)
+        elif not isinstance(x, (list, tuple)):
+             if self.split_size_or_sections is None:
+                 raise RuntimeError("Split module received tensor input but no 'split' attribute was found during initialization.")
+             return x.split(self.split_size_or_sections, dim=self.dim)
+
+        else:
+            raise ValueError(f"Split expected input list of length 1 or 2, got {len(x)}")
 
     @staticmethod
     def from_onnx(attributes=None):
         if attributes is None:
             attributes = {}
+        # 从 ONNX 属性中提取 'split' 参数
         return Split(
+            split_size_or_sections=attributes.get("split", None),
             dim=attributes.get("axis", 0),
         )
 

@@ -30,9 +30,8 @@ class TrustedThirdParty(TupleProvider):
     def generate_additive_triple(self, size0, size1, op, device=None, *args, **kwargs):
         """Generate multiplicative triples of given sizes"""
         generator = TTPClient.get().get_generator(device=device)
-
-        a = generate_random_ring_element(size0, generator=generator, device=device)
-        b = generate_random_ring_element(size1, generator=generator, device=device)
+        a = generate_random_ring_element(size0, generator=generator, device=device)%100
+        b = generate_random_ring_element(size1, generator=generator, device=device)%100
         if comm.get().get_rank() == 0:
             # Request c from TTP
             c = TTPClient.get().ttp_request(
@@ -48,7 +47,30 @@ class TrustedThirdParty(TupleProvider):
         c = ArithmeticSharedTensor.from_shares(c, precision=0)
 
         return a, b, c
+    def generate_3smp_triple(self, size, device=None):
+        generator = TTPClient.get().get_generator(device=device)
+        num_outputs = 7  # a, b, c, ab, bc, ca, abc
 
+        if comm.get().get_rank() == 0:
+            stacked = TTPClient.get().ttp_request("generate_3smp_triple", device, size)
+            
+            if device is not None:
+                stacked = stacked.to(device)
+
+            shares_list = list(stacked.split(1, dim=0))
+            shares_list = [s.squeeze(0) for s in shares_list]
+        else:
+            shares_list = [
+                generate_random_ring_element(size, generator=generator, device=device)
+                for _ in range(num_outputs)
+            ]
+
+        results = [
+            ArithmeticSharedTensor.from_shares(s, precision=0) 
+            for s in shares_list
+        ]
+        
+        return tuple(results)
     def square(self, size, device=None):
         """Generate square double of given size"""
         generator = TTPClient.get().get_generator(device=device)
@@ -63,7 +85,6 @@ class TrustedThirdParty(TupleProvider):
         r = ArithmeticSharedTensor.from_shares(r, precision=0)
         r2 = ArithmeticSharedTensor.from_shares(r2, precision=0)
         return r, r2
-
     def cube(self, size, device=None, mode="cube"):
         """
         Generate triples for x^3 or xy^2.
@@ -72,7 +93,6 @@ class TrustedThirdParty(TupleProvider):
         """
         generator = TTPClient.get().get_generator(device=device)
         
-        # 定义输出张量的数量
         if mode == "cube":
             num_outputs = 3
         elif mode == "xy_square":
@@ -85,61 +105,183 @@ class TrustedThirdParty(TupleProvider):
             shares_list = list(stacked.split(1, dim=0))
             shares_list = [s.squeeze(0) for s in shares_list]
         else:
-            # 其他参与方本地生成随机 share
             shares_list = [
                 generate_random_ring_element(size, generator=generator, device=device)
                 for _ in range(num_outputs)
             ]
 
-        # 转换为 ArithmeticSharedTensor
+        results = [
+            ArithmeticSharedTensor.from_shares(s, precision=0) 
+            for s in shares_list
+        ]
+        return tuple(results)
+    def cube_1(self, size, device=None, mode="cube"):
+        """
+        Generate triples for x^3 or xy^2.
+        """
+        generator = TTPClient.get().get_generator(device=device)
+        
+        if mode == "cube":
+            num_outputs = 3
+        elif mode == "xy_square":
+            num_outputs = 5
+        else:
+            raise ValueError(f"Unknown cube mode: {mode}")
+
+        if comm.get().get_rank() == 0:
+            stacked = TTPClient.get().ttp_request("cube_1", device, size, mode)
+            
+            if device is not None:
+                stacked = stacked.to(device) 
+
+            shares_list = list(stacked.split(1, dim=0))
+            shares_list = [s.squeeze(0) for s in shares_list]
+        else:
+            shares_list = [
+                generate_random_ring_element(size, generator=generator, device=device)
+                for _ in range(num_outputs) 
+            ]
+
         results = [
             ArithmeticSharedTensor.from_shares(s, precision=0) 
             for s in shares_list
         ]
         
-        # 解包返回
         return tuple(results)
+    def generate_gelu_offline_batch(self, input_size, double_size, period, terms, device=None):
 
-    def generate_hybrid_triple(self, size, period, terms, device=None):
-        """
-        Generate hybrid triples (Fourier + Cube).
-        Returns: t, u, v, t2, t3
-        """
         generator = TTPClient.get().get_generator(device=device)
         
-        # 确定形状
-        # t, t2, t3: size
-        # u, v: (terms, *size)
-        uv_shape = (terms,) + size
+        num_double = double_size.numel() if isinstance(double_size, torch.Size) else torch.tensor(double_size).prod().item()
+        num_input = input_size.numel() if isinstance(input_size, torch.Size) else torch.tensor(input_size).prod().item()
+        
+        num_hybrid_total = (3 + 2 * terms) * num_input
+
+        u_cmp_a = generate_random_ring_element(double_size, generator=generator, device=device)
+        u_cmp_b = generate_random_ring_element(double_size, generator=generator, device=device)
+        
+        u_gelu_a = generate_random_ring_element(input_size, generator=generator, device=device)
+        u_gelu_b = generate_random_ring_element(input_size, generator=generator, device=device)
+        
+        u_final_a = generate_random_ring_element(double_size, generator=generator, device=device)
+        u_final_b = generate_random_ring_element(double_size, generator=generator, device=device)
         
         if comm.get().get_rank() == 0:
-            # TTP Server 返回 cat 后的张量
-            # 结构: [t(1), u(terms), v(terms), t2(1), t3(1)] along dim 0
+            packed_res = TTPClient.get().ttp_request(
+                "generate_gelu_offline_batch", device, input_size, double_size, period, terms
+            )
+            
+            cursor = 0
+            
+            end = cursor + 4 * num_double
+            res_cmp_aux = packed_res[cursor:end].view(4, *double_size)
+            cursor = end
+            
+            end = cursor + num_double
+            res_trip1_c = packed_res[cursor:end].view(double_size)
+            cursor = end
+            
+            end = cursor + num_hybrid_total
+            res_hybrid = packed_res[cursor:end].view(3 + 2 * terms, *input_size)
+            cursor = end
+            
+            end = cursor + num_input
+            res_trip2_c = packed_res[cursor:end].view(input_size)
+            cursor = end
+            
+            end = cursor + num_double
+            res_trip3_c = packed_res[cursor:end].view(double_size)
+            
+
+            shares = [s for s in res_cmp_aux]
+            a_all, b_all, r_all, c_all = shares
+            
+
+            u_cmp_c = res_trip1_c
+            
+
+            t_erf = res_hybrid[0]
+            u_erf = res_hybrid[1 : 1 + terms]
+            v_erf = res_hybrid[1 + terms : 1 + 2 * terms]
+            t2_erf = res_hybrid[1 + 2 * terms]
+            t3_erf = res_hybrid[1 + 2 * terms + 1]
+            
+
+            u_gelu_c = res_trip2_c
+            
+
+            u_final_c = res_trip3_c
+            
+        else:
+
+            a_all = generate_random_ring_element(double_size, generator=generator, device=device)
+            b_all = generate_random_ring_element(double_size, generator=generator, device=device)
+            r_all = generate_random_ring_element(double_size, generator=generator, device=device)
+            c_all = generate_random_ring_element(double_size, generator=generator, device=device)
+            
+
+            u_cmp_c = generate_random_ring_element(double_size, generator=generator, device=device)
+            
+
+            hybrid_shape = (3 + 2 * terms, *input_size)
+            res_hybrid = generate_random_ring_element(hybrid_shape, generator=generator, device=device)
+            t_erf = res_hybrid[0]
+            u_erf = res_hybrid[1 : 1 + terms]
+            v_erf = res_hybrid[1 + terms : 1 + 2 * terms]
+            t2_erf = res_hybrid[1 + 2 * terms]
+            t3_erf = res_hybrid[1 + 2 * terms + 1]
+            
+            u_gelu_c = generate_random_ring_element(input_size, generator=generator, device=device)
+            u_final_c = generate_random_ring_element(double_size, generator=generator, device=device)
+
+
+        def to_ast(x): return ArithmeticSharedTensor.from_shares(x, precision=0)
+        
+
+        aux_ret = (to_ast(a_all), to_ast(b_all), to_ast(r_all), to_ast(c_all))
+        
+
+        trip1_ret = (to_ast(u_cmp_a), to_ast(u_cmp_b), to_ast(u_cmp_c))
+        trip2_ret = (to_ast(u_gelu_a), to_ast(u_gelu_b), to_ast(u_gelu_c))
+        trip3_ret = (to_ast(u_final_a), to_ast(u_final_b), to_ast(u_final_c))
+        
+
+        hybrid_ret = (to_ast(t_erf), to_ast(u_erf), to_ast(v_erf), to_ast(t2_erf), to_ast(t3_erf))
+        
+        return aux_ret, trip1_ret, hybrid_ret, trip2_ret, trip3_ret
+    
+    def generate_hybrid_triple(self, size, period, terms, device=None):
+
+        generator = TTPClient.get().get_generator(device=device)
+        
+        total_channels = 1 + terms + terms + 1 + 1
+        
+        concat_shape = (total_channels, *size)
+        
+        if comm.get().get_rank() == 0:
             cat_res = TTPClient.get().ttp_request("generate_hybrid_triple", device, size, period, terms)
             
-            # 切片还原
-            # t: index 0
-            # u: index 1 ~ 1+terms
-            # v: index 1+terms ~ 1+2*terms
-            # t2: index 1+2*terms
-            # t3: index 1+2*terms+1
+            # [关键] 搬回 GPU
+            if device is not None:
+                cat_res = cat_res.to(device)
             
-            idx_u_start = 1
-            idx_v_start = 1 + terms
-            idx_t2 = 1 + 2 * terms
-            idx_t3 = idx_t2 + 1
-            
-            t = cat_res[0]
-            u = cat_res[idx_u_start:idx_v_start]
-            v = cat_res[idx_v_start:idx_t2]
-            t2 = cat_res[idx_t2]
-            t3 = cat_res[idx_t3]
         else:
-            t = generate_random_ring_element(size, generator=generator, device=device)
-            u = generate_random_ring_element(uv_shape, generator=generator, device=device)
-            v = generate_random_ring_element(uv_shape, generator=generator, device=device)
-            t2 = generate_random_ring_element(size, generator=generator, device=device)
-            t3 = generate_random_ring_element(size, generator=generator, device=device)
+            cat_res = generate_random_ring_element(concat_shape, generator=generator, device=device)
+            
+        idx_u_start = 1
+        idx_v_start = 1 + terms
+        idx_t2 = 1 + 2 * terms
+        idx_t3 = idx_t2 + 1
+        
+        t = cat_res[0]
+        u = cat_res[idx_u_start:idx_v_start]
+        v = cat_res[idx_v_start:idx_t2]
+        t2 = cat_res[idx_t2]
+        t3 = cat_res[idx_t3]
+
+        if t.shape != size: t = t.reshape(size)
+        if t2.shape != size: t2 = t2.reshape(size)
+        if t3.shape != size: t3 = t3.reshape(size)
 
         return (
             ArithmeticSharedTensor.from_shares(t),
@@ -148,7 +290,79 @@ class TrustedThirdParty(TupleProvider):
             ArithmeticSharedTensor.from_shares(t2),
             ArithmeticSharedTensor.from_shares(t3)
         )
+    
+    def generate_hybrid_triple_1(self, size, period, terms, device=None):
 
+        generator = TTPClient.get().get_generator(device=device)
+        
+        total_channels = 1 + terms + terms
+        
+        concat_shape = (total_channels, *size)
+        
+        if comm.get().get_rank() == 0:
+            cat_res = TTPClient.get().ttp_request("generate_hybrid_triple_1", device, size, period, terms)
+            
+            if device is not None:
+                cat_res = cat_res.to(device)
+            
+        else:
+            cat_res = generate_random_ring_element(concat_shape, generator=generator, device=device)
+            
+        idx_u_start = 1
+        idx_v_start = 1 + terms
+        idx_t2 = 1 + 2 * terms
+        
+        t = cat_res[0]
+        u = cat_res[idx_u_start:idx_v_start]
+        v = cat_res[idx_v_start:idx_t2]
+
+        if t.shape != size: t = t.reshape(size)
+
+        return (
+            ArithmeticSharedTensor.from_shares(t),
+            ArithmeticSharedTensor.from_shares(u),
+            ArithmeticSharedTensor.from_shares(v),
+        )
+    
+    def generate_reciprocal_offline(self, size, period_s, period_l, beta_s_len, beta_l_len, device=None):
+
+        generator = TTPClient.get().get_generator(device=device)
+        
+        total_tensors = 29
+        
+        if comm.get().get_rank() == 0:
+
+            packed_res = TTPClient.get().ttp_request(
+                "reciprocal_offline", device, size, period_s, period_l, beta_s_len, beta_l_len
+            )
+            
+            shares_list = [s.squeeze(0) for s in packed_res.split(1, dim=0)]
+        else:
+            shares_list = [
+                generate_random_ring_element(size, generator=generator, device=device)
+                for _ in range(total_tensors)
+            ]
+
+
+        results = [
+            ArithmeticSharedTensor.from_shares(s, precision=0) 
+            for s in shares_list
+        ]
+        
+
+        res_s = results[0:5]
+
+        res_l = results[5:10]
+
+        res_cmp = results[10:14]
+
+        res_newton = []
+        base = 14
+        for i in range(3):
+            res_newton.append(results[base + i*5 : base + (i+1)*5])
+            
+        return res_s, res_l, res_cmp, res_newton
+    
     def generate_cmp_aux(self, size, device=None):
         """
         Generate auxiliary parameters for CMP protocol: a, b, r, c
@@ -156,7 +370,7 @@ class TrustedThirdParty(TupleProvider):
         generator = TTPClient.get().get_generator(device=device)
         
         if comm.get().get_rank() == 0:
-            # TTP Server 返回 stack([a, b, r, c])
+
             stacked = TTPClient.get().ttp_request("generate_cmp_aux", device, size)
             shares = [s.squeeze(0) for s in stacked.split(1, dim=0)]
             a, b, r, c = shares[0], shares[1], shares[2], shares[3]
@@ -386,7 +600,112 @@ class TTPServer:
         except RuntimeError as err:
             logging.info("Encountered Runtime error. TTPServer shutting down:")
             logging.info(f"{err}")
+    def generate_3smp_triple(self, size):
 
+        a_gpu = self._get_additive_PRSS(size)
+        b_gpu = self._get_additive_PRSS(size)
+        c_gpu = self._get_additive_PRSS(size)
+
+        ab_gpu = a_gpu.mul(b_gpu)
+        bc_gpu = b_gpu.mul(c_gpu)
+        ca_gpu = c_gpu.mul(a_gpu)
+        abc_gpu = ab_gpu.mul(c_gpu)
+
+ 
+        parts_cpu = [
+            a_gpu.cpu(), b_gpu.cpu(), c_gpu.cpu(),
+            ab_gpu.cpu(), bc_gpu.cpu(), ca_gpu.cpu(), abc_gpu.cpu()
+        ]
+
+        stacked_cpu = torch.stack(parts_cpu)
+
+        mask_gpu = self._get_additive_PRSS(stacked_cpu.shape, remove_rank=True)
+        stacked_cpu -= mask_gpu.cpu()
+
+        return stacked_cpu        
+    def reciprocal_offline(self, size, period_s, period_l, beta_s_len, beta_l_len):
+
+        from crypten.encoder import FixedPointEncoder
+        encoder = FixedPointEncoder()
+        
+
+        hybrid_s_gpu = self.generate_hybrid_triple(size, period_s, beta_s_len)
+        hybrid_l_gpu = self.generate_hybrid_triple(size, period_l, beta_l_len)
+        
+
+        a = torch.rand(size, device=self.device) * 10 + 100 
+        b = torch.rand(size, device=self.device) * (a * 1e-9)
+        r = torch.ones(size, device=self.device)
+        c = torch.zeros(size, device=self.device)
+        
+        cmp_aux_gpu = torch.stack([
+            encoder.encode(a), encoder.encode(b),
+            encoder.encode(r), encoder.encode(c)
+        ])
+        cmp_aux_gpu -= self._get_additive_PRSS(cmp_aux_gpu.shape, remove_rank=True)
+        
+        newton_parts_cpu = []
+        for _ in range(3):
+            l1 = self._get_additive_PRSS(size)
+            l2 = self._get_additive_PRSS(size)
+            l1_l2 = l1.mul(l2)
+            l2_sq = l2.mul(l2)
+            l1_l2_sq = l1.mul(l2_sq)
+            
+
+            newton_parts_cpu.extend([
+                l1.cpu(), l2.cpu(), l1_l2.cpu(), l2_sq.cpu(), l1_l2_sq.cpu()
+            ])
+            
+        newton_stack_cpu = torch.stack(newton_parts_cpu)
+
+        mask_gpu = self._get_additive_PRSS(newton_stack_cpu.shape, remove_rank=True)
+        newton_stack_cpu -= mask_gpu.cpu()
+        
+
+        flat_res_cpu = torch.cat([
+            hybrid_s_gpu.reshape(-1).cpu(),
+            hybrid_l_gpu.reshape(-1).cpu(),
+            cmp_aux_gpu.reshape(-1).cpu(),
+            newton_stack_cpu.reshape(-1).cpu()
+        ])
+        
+
+        return flat_res_cpu.to(self.device)
+    
+    def generate_gelu_offline_batch(self, input_size, double_size, period, terms):
+
+        from crypten.encoder import FixedPointEncoder
+        encoder = FixedPointEncoder()
+        
+
+        a = torch.rand(double_size, device=self.device) * 10 + 100 
+        b = torch.rand(double_size, device=self.device) * (a * 1e-9)
+        r = torch.ones(double_size, device=self.device)
+        c = torch.zeros(double_size, device=self.device)
+        
+        cmp_aux = torch.stack([
+            encoder.encode(a), encoder.encode(b),
+            encoder.encode(r), encoder.encode(c)
+        ])
+        cmp_aux -= self._get_additive_PRSS(cmp_aux.shape, remove_rank=True)
+        
+        trip1_c = self.additive(double_size, double_size, "mul")
+        trip2_c = self.additive(input_size, input_size, "mul")
+        trip3_c = self.additive(double_size, double_size, "mul")
+
+        hybrid_res = self.generate_hybrid_triple(input_size, period, terms)
+        
+
+        packed_result = torch.cat([
+            cmp_aux.reshape(-1).cpu(),    
+            trip1_c.reshape(-1).cpu(),   
+            hybrid_res.reshape(-1).cpu(),   
+            trip2_c.reshape(-1).cpu(),      
+            trip3_c.reshape(-1).cpu()       
+        ])
+        
+        return packed_result
     def _setup_generators(self):
         """Create random generator to send to a party"""
         ws = comm.get().get_world_size()
@@ -482,18 +801,13 @@ class TTPServer:
         Generate triples for x^3 or xy^2 on TTP Server.
         """
         if mode == "cube":
-            # 1. 恢复出 r 的明文 (Sum of all parties' shares)
             r = self._get_additive_PRSS(size)
             
-            # 2. 计算 r^2, r^3
             r2 = r.mul(r)
             r3 = r2.mul(r)
             
-            # 3. 堆叠
             stacked = torch.stack([r, r2, r3])
             
-            # 4. 减去其他方的 shares (PRSS)
-            # 注意: _get_additive_PRSS 需要对应 shape
             stacked -= self._get_additive_PRSS(stacked.size(), remove_rank=True)
             
             return stacked
@@ -508,82 +822,161 @@ class TTPServer:
 
             stacked = torch.stack([l1, l2, l1_l2, l2_sq, l1_l2_sq])
             stacked -= self._get_additive_PRSS(stacked.size(), remove_rank=True)
-            
             return stacked
+        
+        else:
+            raise ValueError(f"Unknown cube mode: {mode}")
+        
+    def cube_1(self, size, mode="cube"):
+        if mode == "cube":
+            r_gpu = self._get_additive_PRSS(size)
+            
+            r2_gpu = r_gpu.mul(r_gpu)
+            r3_gpu = r2_gpu.mul(r_gpu)
+            
+            r_cpu = r_gpu.cpu()
+            r2_cpu = r2_gpu.cpu()
+            r3_cpu = r3_gpu.cpu()
+            
+            stacked_cpu = torch.stack([r_cpu, r2_cpu, r3_cpu])
+            
+            stack_shape = stacked_cpu.shape
+            
+            mask_gpu = self._get_additive_PRSS(stack_shape, remove_rank=True)
+
+            stacked_cpu -= mask_gpu.cpu()
+            
+            return stacked_cpu
+
+        elif mode == "xy_square":
+
+            l1_gpu = self._get_additive_PRSS(size)
+            l2_gpu = self._get_additive_PRSS(size)
+
+            l1_l2_gpu = l1_gpu.mul(l2_gpu)
+            l2_sq_gpu = l2_gpu.mul(l2_gpu)
+            l1_l2_sq_gpu = l1_gpu.mul(l2_sq_gpu)
+
+
+            l1_c = l1_gpu.cpu()
+            l2_c = l2_gpu.cpu()
+            l1_l2_c = l1_l2_gpu.cpu()
+            l2_sq_c = l2_sq_gpu.cpu()
+            l1_l2_sq_c = l1_l2_sq_gpu.cpu()
+
+
+            stacked_cpu = torch.stack([l1_c, l2_c, l1_l2_c, l2_sq_c, l1_l2_sq_c])
+
+            mask_gpu = self._get_additive_PRSS(stacked_cpu.shape, remove_rank=True)
+            stacked_cpu -= mask_gpu.cpu()
+            
+            return stacked_cpu
         
         else:
             raise ValueError(f"Unknown cube mode: {mode}")
 
     def generate_hybrid_triple(self, size, period, terms):
-        """
-        Generate hybrid triples (Fourier + Cube).
-        Logic mirrors TrustedFirstParty.generate_hybrid_triple
-        """
+
         encoder = FixedPointEncoder()
         
-        # 1. 确定 Scaling
+
         if period > 50.0:
             scale = 100.0 
         else:
             scale = period
             
-        # 2. 生成明文数据 (Floats)
+
         t_plain = torch.rand(size, device=self.device) * scale
         
+
         k = [i * 2 * math.pi / period for i in range(1, terms + 1)]
         tk = torch.stack([i * t_plain for i in k])
         
         u_plain = torch.sin(tk)
         v_plain = torch.cos(tk)
+        
         t2_plain = t_plain.square()
         t3_plain = t2_plain * t_plain
 
-        # 3. 编码 (Float -> FixedPoint Integer)
-        # 注意: 为了能够 concat，需要统一维度
-        # t, t2, t3 需要 unsqueeze 变成 (1, *size)
-        
+
         t_enc = encoder.encode(t_plain, device=self.device).reshape(1, *size)
-        u_enc = encoder.encode(u_plain, device=self.device) # (terms, *size)
-        v_enc = encoder.encode(v_plain, device=self.device) # (terms, *size)
+        u_enc = encoder.encode(u_plain, device=self.device)
+        v_enc = encoder.encode(v_plain, device=self.device)
         t2_enc = encoder.encode(t2_plain, device=self.device).reshape(1, *size)
         t3_enc = encoder.encode(t3_plain, device=self.device).reshape(1, *size)
         
-        # 4. 拼接
+
         results = torch.cat([t_enc, u_enc, v_enc, t2_enc, t3_enc], dim=0)
-        
-        # 5. 减去其他方的 shares
+
         results -= self._get_additive_PRSS(results.shape, remove_rank=True)
         
-        # 必须移回 CPU 以便发送 (Crypten TTP 通信层通常处理 CPU tensor)
+        return results.cpu()
+    
+    def generate_hybrid_triple_1(self, size, period, terms):
+
+        encoder = FixedPointEncoder()
+        
+
+        if period > 50.0:
+            scale = 100.0 
+        else:
+            scale = period
+
+        t_plain = torch.rand(size, device=self.device) * scale
+        
+
+        k = [i * 2 * math.pi / period for i in range(1, terms + 1)]
+        tk = torch.stack([i * t_plain for i in k])
+        
+        u_plain = torch.sin(tk)
+        v_plain = torch.cos(tk)
+
+
+        t_enc = encoder.encode(t_plain, device=self.device).reshape(1, *size)
+        u_enc = encoder.encode(u_plain, device=self.device)
+        v_enc = encoder.encode(v_plain, device=self.device)
+        
+
+        results = torch.cat([t_enc, u_enc, v_enc], dim=0)
+        
+
+        results -= self._get_additive_PRSS(results.shape, remove_rank=True)
+        
+
         return results.cpu()
 
     def generate_cmp_aux(self, size):
-        """
-        Generate CMP auxiliary parameters (a, b, r, c).
-        """
+
+        from crypten.encoder import FixedPointEncoder
+        import crypten.communicator as comm
+        
         encoder = FixedPointEncoder()
+        device = self.device
+        my_rank = comm.get().get_rank() 
         
-        # 1. 生成明文逻辑 (同 TFP)
-        a_abs = torch.rand(size, device=self.device) * 10 + 1 
-        b_abs = torch.rand(size, device=self.device) * (a_abs * 1e-9) 
+
+        if my_rank == 0:
+
+            a = torch.rand(size, device=device) * 10 + 100 
+            b = torch.rand(size, device=device) * (a * 1e-9)
+            r = torch.ones(size, device=device)
+            c = torch.zeros(size, device=device)
+        else:
+
+            a = torch.zeros(size, device=device)
+            b = torch.zeros(size, device=device)
+            r = torch.zeros(size, device=device)
+            c = torch.zeros(size, device=device)
         
-        sign = (torch.rand(size, device=self.device) > 0.5).float() * 2 - 1
-        
-        a = a_abs * sign
-        b = b_abs * sign
-        r = sign 
-        c = (1 - sign) / 2
-        
-        # 2. 编码并堆叠
-        # a, b, r, c 都是 Float tensor，编码为 Ring Element
+
         stacked = torch.stack([
-            encoder.encode(a, device=self.device),
-            encoder.encode(b, device=self.device),
-            encoder.encode(r, device=self.device),
-            encoder.encode(c, device=self.device)
+            encoder.encode(a),
+            encoder.encode(b),
+            encoder.encode(r),
+            encoder.encode(c)
         ])
         
-        # 3. 减去其他方的 shares
+
         stacked -= self._get_additive_PRSS(stacked.shape, remove_rank=True)
         
         return stacked.cpu()

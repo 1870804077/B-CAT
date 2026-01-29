@@ -128,14 +128,14 @@ def square(x):
 def cube(x, y=None, scale_y=True,mode="cube"):
     if mode == "cube":    
         provider = crypten.mpc.get_default_provider()
-        r, r2, r3 = provider.cube(x.size(), device=x.device, mode="cube")
+        r, r2, r3 = provider.cube_1(x.size(), device=x.device, mode="cube")
         with IgnoreEncodings([x, r]):
             epsilon = (x + r).reveal()
         return -r3 + 3 * r2* epsilon -3 *r* epsilon * epsilon+epsilon* epsilon * epsilon
 
     else:
         provider = crypten.mpc.get_default_provider()
-        l1, l2, l1_l2, l2_sq, l1_l2_sq = provider.cube(x.size(), device=x.device, mode="xy_square")
+        l1, l2, l1_l2, l2_sq, l1_l2_sq = provider.cube_1(x.size(), device=x.device, mode="xy_square")
         
         with IgnoreEncodings([x, y, l1, l2]):
             delta1 = (x + l1).reveal()
